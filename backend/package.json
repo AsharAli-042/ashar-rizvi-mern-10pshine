@@ -1,0 +1,39 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "dev": "nodemon src/server.js",
+    "start": "node src/server.js",
+    "test": "mocha \"test/**/*.test.js\"",
+    "test:watch": "mocha \"test/**/*.test.js\" --watch",
+    "coverage": "nyc --reporter=lcov --reporter=text mocha \"test/**/*.test.js\"",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@prisma/client": "^6.19.0",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "helmet": "^8.1.0",
+    "pino": "^10.1.1",
+    "pino-http": "^11.0.0"
+  },
+  "devDependencies": {
+    "chai": "^6.2.2",
+    "mocha": "^11.7.5",
+    "nodemon": "^3.1.11",
+    "nyc": "^17.1.0",
+    "prisma": "^6.19.0",
+    "sinon": "^21.0.1",
+    "supertest": "^7.2.2"
+  }
+}
