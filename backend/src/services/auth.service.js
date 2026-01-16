@@ -5,6 +5,8 @@ const ApiError = require("../utils/ApiError");
 const userModel = require("../models/user.model");
 const { loadEnv } = require("../config/env");
 const { logger } = require("../config/logger");
+const emailService = require("./email.service");
+const { emailConfig } = require("../config/email");
 
 const env = loadEnv();
 
@@ -68,9 +70,12 @@ async function forgotPassword({ email }) {
 
   const user = await userModel.findUserByEmail(email);
 
+  // Always respond generic (prevents enumeration)
+  const generic = { message: "If the email exists, a reset link has been sent." };
+
   if (!user) {
     logger.info({ email }, "Forgot password requested for non-existing email");
-    return { message: "If the email exists, a reset token has been issued." };
+    return generic;
   }
 
   const rawToken = crypto.randomBytes(32).toString("hex");
@@ -79,13 +84,27 @@ async function forgotPassword({ email }) {
 
   await userModel.updateUserById(user.id, { resetTokenHash, resetTokenExpiresAt: expires });
 
-  logger.info({ userId: user.id }, "Password reset token generated");
+  const resetUrl = `${emailConfig.frontendUrl}/reset-password?token=${rawToken}`;
 
-  return {
-    message: "Reset token generated (dev mode). Use it to reset password.",
-    resetToken: rawToken,
-    expiresAt: expires.toISOString(),
-  };
+  const html = `
+    <p>You requested a password reset.</p>
+    <p>This link will expire in ${env.RESET_TOKEN_EXPIRES_MIN} minutes.</p>
+    <p><a href="${resetUrl}">Reset your password</a></p>
+    <p>If you didn’t request this, you can ignore this email.</p>
+  `;
+
+  try {
+    await emailService.sendMail({
+      to: user.email,
+      subject: "Reset your password",
+      html,
+    });
+  } catch (e) {
+    // Still return generic (don’t leak). Log for debugging.
+    logger.error({ err: e, userId: user.id }, "Failed to send reset email");
+  }
+
+  return generic;
 }
 
 async function resetPassword({ token, newPassword }) {
