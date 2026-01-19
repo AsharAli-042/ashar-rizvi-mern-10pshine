@@ -2,9 +2,14 @@ const createApp = require("./app");
 const { loadEnv } = require("./config/env");
 const { logger } = require("./config/logger");
 const { connectDb, disconnectDb } = require("./config/db");
+const { validateEmailConfig } = require("./config/email");
 
 const env = loadEnv();
 const app = createApp();
+
+if (env.NODE_ENV !== "test") {
+  validateEmailConfig();
+}
 
 async function start() {
   await connectDb();

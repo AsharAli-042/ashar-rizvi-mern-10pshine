@@ -7,13 +7,22 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 
+const emailService = require("../../src/services/email.service");
 const userModel = require("../../src/models/user.model");
 const ApiError = require("../../src/utils/ApiError");
 const authService = require("../../src/services/auth.service");
 
+
 describe("Auth Service", () => {
   afterEach(() => sinon.restore());
 
+  it("should send a mail when forgotPassword is called", async () => {
+    sinon.stub(emailService, "sendMail").resolves(true);
+    const res = await authService.forgotPassword({ email: "a@b.com" });
+    expect(res).to.have.property("message");
+    expect(emailService.sendMail.calledOnce).to.equal(true);
+  });
+  
   it("POST /auth/register -> registers user", async () => {
     sinon.stub(userModel, "findUserByEmail").resolves(null);
     sinon.stub(bcrypt, "hash").resolves("hashed");
