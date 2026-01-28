@@ -150,7 +150,7 @@ export default function AuthPage() {
               </TabsList>
 
               <TabsContent value="login">
-                <form onSubmit={onSubmitLogin} className="space-y-4">
+                <form onSubmit={onSubmitLogin} className="space-y-4" noValidate>
                   <div className="space-y-2">
                     <Label htmlFor="loginEmail">Email</Label>
                     <Input
@@ -190,7 +190,7 @@ export default function AuthPage() {
               </TabsContent>
 
               <TabsContent value="register">
-                <form onSubmit={onSubmitRegister} className="space-y-4">
+                <form onSubmit={onSubmitRegister} className="space-y-4" noValidate>
                   <div className="space-y-2">
                     <Label htmlFor="name">Name</Label>
                     <Input

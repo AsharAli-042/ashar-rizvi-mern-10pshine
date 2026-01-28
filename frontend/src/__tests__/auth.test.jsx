@@ -1,10 +1,10 @@
 import "@testing-library/jest-dom";
 import { render, screen } from "@testing-library/react";
-import jest from "@jest/globals";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter } from "react-router-dom"; 
 import AuthPage from "../pages/AuthPage";
-import { test, expect } from "@jest/globals";
+import { test, expect, jest } from "@jest/globals";
+
 
 jest.mock("../auth/useAuth", () => ({
     useAuth: () => ({
@@ -37,9 +37,16 @@ jest.mock("../auth/useAuth", () => ({
       </MemoryRouter>
     );
   
+    // 1. Fill in the email and a dummy password
     await user.type(screen.getByLabelText(/email/i), "not-an-email");
-    await user.type(screen.getByLabelText(/password/i), "password123");
-    await user.click(screen.getByRole("button", { name: /sign in/i }));
+    await user.type(screen.getByLabelText(/password/i), "anything123");
   
-    expect(await screen.findByText(/valid email/i)).toBeInTheDocument();
+    // 2. Click the button
+    const signInButton = screen.getByRole("button", { name: /sign in/i });
+    await user.click(signInButton);
+  
+    // 3. Wait for the error message
+    // Added a timeout increase just in case JSDOM is being slow
+    const errorAlert = await screen.findByText(/please enter a valid email/i, {}, { timeout: 3000 });
+    expect(errorAlert).toBeInTheDocument();
   });
