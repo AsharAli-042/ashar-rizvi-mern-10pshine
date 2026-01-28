@@ -1,17 +1,14 @@
-import React, { createContext, useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
+import { AuthContext } from "./AuthContext"; // Ensure this is a named import
 import { authApi } from "../api/auth.api";
 import { usersApi } from "../api/users.api";
 import { clearToken, getToken, getUser, setToken, setUser } from "../utils/storage";
-
-// eslint-disable-next-line react-refresh/only-export-components
-export const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [tokenState, setTokenState] = useState(getToken());
   const [userState, setUserState] = useState(getUser());
   const [initializing, setInitializing] = useState(false);
 
-  // Pull any “session expired” message set by the API client
   const [authMessage, setAuthMessage] = useState(() => {
     const msg = sessionStorage.getItem("auth_message");
     if (msg) sessionStorage.removeItem("auth_message");
@@ -20,61 +17,57 @@ export function AuthProvider({ children }) {
 
   const isAuthenticated = !!tokenState;
 
-  useEffect(() => {
-    let ignore = false;
-
-    async function hydrate() {
-      if (!tokenState || userState) return;
-      setInitializing(true);
-      try {
-        const me = await usersApi.me();
-        if (!ignore) {
-          setUser(me);
-          setUserState(me);
-        }
-      } catch {
-        // 401 is handled globally by interceptor; no need to do more here
-      } finally {
-        if (!ignore) setInitializing(false);
-      }
-    }
-
-    hydrate();
-    return () => {
-      ignore = true;
-    };
-  }, [tokenState, userState]);
-
-  async function register({ name, email, password }) {
-    const data = await authApi.register({ name, email, password });
-    setToken(data.token);
-    setUser(data.user);
-    setTokenState(data.token);
-    setUserState(data.user);
-    return data.user;
-  }
-
-  async function login({ email, password }) {
-    const data = await authApi.login({ email, password });
-    setToken(data.token);
-    setUser(data.user);
-    setTokenState(data.token);
-    setUserState(data.user);
-    return data.user;
-  }
-
-  async function logout({ callApi = false } = {}) {
-    if (callApi) {
+  const logout = useCallback(async () => {
+    if (tokenState) {
       try {
         await authApi.logout();
       } catch {
-        // ignore; backend logout is optional/stateless
+        // ignore
       }
     }
     clearToken();
     setTokenState(null);
     setUserState(null);
-  }
+  }, [tokenState]);
+
+  useEffect(() => {
+    let ignore = false;
+    async function hydrate() {
+      if (!tokenState || userState) return;
+      setInitializing(true);
+      try {
+        const me = await usersApi.getMe();
+        if (!ignore) setUserState(me);
+      } catch {
+        if (!ignore) logout();
+      } finally {
+        if (!ignore) setInitializing(false);
+      }
+    }
+    hydrate();
+    return () => { ignore = true; };
+  }, [tokenState, userState, logout]); // Added logout here
+
+  const register = useCallback(async (credentials) => {
+    const { token, user } = await authApi.register(credentials);
+    setToken(token);
+    setUser(user);
+    setTokenState(token);
+    setUserState(user);
+  }, []);
+
+  const login = useCallback(async (credentials) => {
+    const { token, user } = await authApi.login(credentials);
+    setToken(token);
+    setUser(user);
+    setTokenState(token);
+    setUserState(user);
+  }, []);
+
+  const updateUser = useCallback((nextUser) => {
+    setUser(nextUser);
+    setUserState(nextUser);
+  }, []);
 
   const value = useMemo(
     () => ({
@@ -87,9 +80,22 @@ export function AuthProvider({ children }) {
       register,
       login,
       logout,
+      updateUser,
     }),
-    [tokenState, userState, isAuthenticated, initializing, authMessage]
+    [
+      tokenState,
+      userState,
+      isAuthenticated,
+      initializing,
+      authMessage,
+      register,
+      login,
+      logout,
+      updateUser,
+    ]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
+
+export default AuthProvider;
