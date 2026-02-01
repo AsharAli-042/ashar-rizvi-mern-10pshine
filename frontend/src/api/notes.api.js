@@ -11,4 +11,12 @@ export const notesApi = {
     request({ method: "PATCH", url: `/notes/${id}`, data: payload }),
 
   remove: (id) => request({ method: "DELETE", url: `/notes/${id}` }),
+
+  pinNote: (id, isPinned) =>
+    request({ method: "PATCH", url: `/notes/${id}/pin`, data: { isPinned } }),
+
+  searchFavoriteNotes: (q = "") =>
+    request({ method: "GET", url: "/notes/favorites/search", params: { q } }),
 };
+
+

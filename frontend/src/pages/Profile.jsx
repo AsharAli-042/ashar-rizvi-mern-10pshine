@@ -4,6 +4,7 @@ import { LogOut, Save, User2 } from "lucide-react";
 
 import { usersApi } from "../api/users.api";
 import { useAuth } from "../auth/useAuth";
+import { clearToken } from "../utils/storage";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Label } from "../components/ui/label";
@@ -11,6 +12,7 @@ import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "../components/ui/alert";
 
+/* helpers omitted for brevity — preserve previous functions like initialsFromName */
 function initialsFromName(nameOrEmail) {
   const s = String(nameOrEmail || "").trim();
   if (!s) return "U";
@@ -41,9 +43,16 @@ export default function Profile() {
     user?.email,
   ]);
 
+  // Password change form state
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [pwdLoading, setPwdLoading] = useState(false);
+  const [pwdMsg, setPwdMsg] = useState("");
+
+  // ... existing load profile code (unchanged) ...
   useEffect(() => {
     let ignore = false;
-
     async function load() {
       setErrorMsg("");
       setSuccessMsg("");
@@ -51,7 +60,6 @@ export default function Profile() {
       try {
         const me = await usersApi.me();
         if (ignore) return;
-
         setOriginal(me);
         setName(me?.name || "");
         setEmail(me?.email || "");
@@ -61,7 +69,6 @@ export default function Profile() {
         if (!ignore) setLoading(false);
       }
     }
-
     load();
     return () => {
       ignore = true;
@@ -119,6 +126,44 @@ export default function Profile() {
   async function onLogout() {
     await logout({ callApi: false });
     navigate("/auth");
+  }
+
+  // NEW: change password handler
+  async function submitChangePassword(e) {
+    e.preventDefault();
+    setPwdMsg("");
+    if (!currentPassword || !newPassword) {
+      setPwdMsg("Please fill all password fields.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPwdMsg("New passwords do not match.");
+      return;
+    }
+
+    setPwdLoading(true);
+    try {
+      await usersApi.changePassword({ currentPassword, newPassword });
+      // success — for security force logout and redirect to login
+      setPwdMsg("Password changed successfully. Please sign in again.");
+      clearToken();
+      // short timeout to allow user to read message, or redirect immediately:
+      navigate("/auth");
+    } catch (err) {
+      // map 401 to human readable message per backend contract
+      const msg = err?.message || "Change password failed.";
+      if (err?.code === "INVALID_CREDENTIALS" || err?.status === 401) {
+        setPwdMsg("Current password is incorrect.");
+      } else {
+        setPwdMsg(msg);
+      }
+    } finally {
+      setPwdLoading(false);
+      // clear password fields (safety)
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    }
   }
 
   return (
@@ -246,6 +291,49 @@ export default function Profile() {
             )}
           </CardContent>
         </Card>
+
+        {/* NEW: Password change card (place below or in right column) */}
+        <Card className="lg:col-span-3">
+          <CardHeader>
+            <CardTitle>Change Password</CardTitle>
+            <CardDescription>Change your account password. You will be signed out after a successful change.</CardDescription>
+          </CardHeader>
+
+          <CardContent>
+            {pwdMsg ? (
+              <div className="mb-4">
+                <Alert variant={pwdMsg.toLowerCase().includes("success") ? "success" : "destructive"}>
+                  <AlertTitle>{pwdMsg.toLowerCase().includes("success") ? "Success" : "Error"}</AlertTitle>
+                  <AlertDescription>{pwdMsg}</AlertDescription>
+                </Alert>
+              </div>
+            ) : null}
+
+            <form onSubmit={submitChangePassword} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="currentPassword">Current password</Label>
+                <Input id="currentPassword" type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="newPassword">New password</Label>
+                <Input id="newPassword" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword">Confirm new password</Label>
+                <Input id="confirmPassword" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+              </div>
+
+              <div className="flex items-center justify-end gap-2">
+                <Button type="submit" disabled={pwdLoading}>
+                  {pwdLoading ? "Changing..." : "Change Password"}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+        
       </div>
     </div>
   );
