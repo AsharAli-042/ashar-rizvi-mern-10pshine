@@ -11,4 +11,11 @@ const updateMe = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, data: user });
 });
 
-module.exports = { getMe, updateMe };
+/* change password */
+const changePassword = asyncHandler(async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  const result = await usersService.changePassword(req.user.id, currentPassword, newPassword);
+  res.status(200).json({ success: true, data: result });
+});
+
+module.exports = { getMe, updateMe, changePassword };

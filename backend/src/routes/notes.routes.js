@@ -13,4 +13,6 @@ router.get("/:id", notesController.getNote);
 router.patch("/:id", notesController.updateNote);
 router.delete("/:id", notesController.deleteNote);
 
+router.patch("/:id/pin", notesController.pinNote);
+
 module.exports = router;

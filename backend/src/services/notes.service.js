@@ -57,5 +57,20 @@ async function deleteNote(userId, noteId) {
   logger.info({ userId, noteId }, "Note deleted");
   return { success: true };
 }
+/* pin/unpin note */
+async function pinNote(userId, noteId, isPinned) {
+  if (!userId) throw new ApiError(401, "Unauthorized", "UNAUTHORIZED");
+  const updated = await noteModel.setPinForNoteByUser(noteId, userId, Boolean(isPinned));
+  if (!updated) throw new ApiError(404, "Note not found", "NOTE_NOT_FOUND");
+  logger.info({ userId, noteId, isPinned }, "Note pin state changed");
+  return updated;
+}
 
-module.exports = { listNotes, createNote, getNote, updateNote, deleteNote };
+/* search favorites */
+async function searchFavorites(userId, query) {
+  if (!userId) throw new ApiError(401, "Unauthorized", "UNAUTHORIZED");
+  const results = await noteModel.searchFavoriteNotesByUser(userId, query);
+  return results;
+}
+
+module.exports = { listNotes, createNote, getNote, updateNote, deleteNote, pinNote, searchFavorites };

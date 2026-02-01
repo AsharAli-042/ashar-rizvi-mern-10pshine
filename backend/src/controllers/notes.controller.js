@@ -26,4 +26,11 @@ const deleteNote = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, data: result });
 });
 
-module.exports = { listNotes, createNote, getNote, updateNote, deleteNote };
+const pinNote = asyncHandler(async (req, res) => {
+  // expects body: { isPinned: true/false }
+  const isPinned = req.body.isPinned;
+  const note = await notesService.pinNote(req.user.id, req.params.id, isPinned);
+  res.status(200).json({ success: true, data: note });
+});
+
+module.exports = { listNotes, createNote, getNote, updateNote, deleteNote, pinNote };

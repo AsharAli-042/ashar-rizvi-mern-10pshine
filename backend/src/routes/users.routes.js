@@ -9,4 +9,6 @@ router.use(authMiddleware);
 router.get("/me", usersController.getMe);
 router.patch("/me", usersController.updateMe);
 
+router.post("/me/change-password", usersController.changePassword);
+
 module.exports = router;
