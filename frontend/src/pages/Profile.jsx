@@ -1,18 +1,28 @@
-import { useEffect, useMemo, useState } from "react";
+// frontend/src/pages/Profile.jsx
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { LogOut, Save, User2 } from "lucide-react";
+import { Save, Lock, User2 } from "lucide-react";
 
 import { usersApi } from "../api/users.api";
 import { useAuth } from "../auth/useAuth";
 import { clearToken } from "../utils/storage";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
-import { Label } from "../components/ui/label";
-import { Input } from "../components/ui/input";
-import { Button } from "../components/ui/button";
-import { Alert, AlertDescription, AlertTitle } from "../components/ui/alert";
+/**
+ * New Profile page: stacked-card system with heavy borders and tactile controls.
+ * - Big header card with chunky avatar (square) and name/email
+ * - Email is visually "locked" and non-editable with lock icon
+ * - Name is editable with thick border and a heavy focus effect
+ * - Change Password area lives inside the same card under a divider
+ *
+ * Visual behavior:
+ * - Inputs use strong border-4 black outlines (neobrutal style)
+ * - Name input focus applies a shadow that looks like a pressed slab
+ * - Password action button has a "press" effect (translate and hide shadow)
+ *
+ * NOTE: This component uses usersApi.me, usersApi.updateMe, usersApi.changePassword
+ * and useAuth().logout to preserve existing auth behavior.
+ */
 
-/* helpers omitted for brevity — preserve previous functions like initialsFromName */
 function initialsFromName(nameOrEmail) {
   const s = String(nameOrEmail || "").trim();
   if (!s) return "U";
@@ -26,15 +36,19 @@ export default function Profile() {
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-
-  const [errorMsg, setErrorMsg] = useState("");
-  const [successMsg, setSuccessMsg] = useState("");
-
-  const [original, setOriginal] = useState(null);
+  const [savingName, setSavingName] = useState(false);
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [original, setOriginal] = useState(null);
+
+  // password form
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [pwdLoading, setPwdLoading] = useState(false);
+
+  const [message, setMessage] = useState({ type: "", text: "" });
 
   const avatarText = useMemo(() => initialsFromName(name || email || user?.name || user?.email), [
     name,
@@ -43,20 +57,11 @@ export default function Profile() {
     user?.email,
   ]);
 
-  // Password change form state
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [pwdLoading, setPwdLoading] = useState(false);
-  const [pwdMsg, setPwdMsg] = useState("");
-
-  // ... existing load profile code (unchanged) ...
   useEffect(() => {
     let ignore = false;
     async function load() {
-      setErrorMsg("");
-      setSuccessMsg("");
       setLoading(true);
+      setMessage({ type: "", text: "" });
       try {
         const me = await usersApi.me();
         if (ignore) return;
@@ -64,7 +69,7 @@ export default function Profile() {
         setName(me?.name || "");
         setEmail(me?.email || "");
       } catch (err) {
-        if (!ignore) setErrorMsg(err?.message || "Failed to load profile.");
+        setMessage({ type: "error", text: err?.message || "Failed to load profile." });
       } finally {
         if (!ignore) setLoading(false);
       }
@@ -75,91 +80,68 @@ export default function Profile() {
     };
   }, []);
 
-  function onReset() {
-    setErrorMsg("");
-    setSuccessMsg("");
-    setName(original?.name || "");
-    setEmail(original?.email || "");
-  }
+  async function onSaveName(e) {
+    e?.preventDefault?.();
+    setMessage({ type: "", text: "" });
 
-  async function onSave(e) {
-    e.preventDefault();
-    setErrorMsg("");
-    setSuccessMsg("");
-
-    const trimmedName = name.trim();
-    const trimmedEmail = email.trim();
-
-    if (!trimmedName) return setErrorMsg("Name is required.");
-    if (!trimmedEmail) return setErrorMsg("Email is required.");
-
-    // Send only what changed (safer with unknown backend validation rules)
-    const payload = {};
-    if (trimmedName !== (original?.name || "")) payload.name = trimmedName;
-    if (trimmedEmail !== (original?.email || "")) payload.email = trimmedEmail;
-
-    // Nothing changed: just show a gentle message
-    if (Object.keys(payload).length === 0) {
-      setSuccessMsg("No changes to save.");
+    const trimmed = (name || "").trim();
+    if (!trimmed) {
+      setMessage({ type: "error", text: "Name cannot be empty." });
+      return;
+    }
+    if (trimmed === (original?.name || "")) {
+      setMessage({ type: "info", text: "No changes to save." });
       return;
     }
 
-    setSaving(true);
+    setSavingName(true);
     try {
-      const updated = await usersApi.updateMe(payload);
-
+      const updated = await usersApi.updateMe({ name: trimmed });
       setOriginal(updated);
       setName(updated?.name || "");
       setEmail(updated?.email || "");
-
-      // Update global auth user so Navbar updates immediately
       updateUser(updated);
-
-      setSuccessMsg("Profile updated successfully.");
+      setMessage({ type: "success", text: "Name updated." });
     } catch (err) {
-      setErrorMsg(err?.message || "Update failed.");
+      setMessage({ type: "error", text: err?.message || "Failed to update name." });
     } finally {
-      setSaving(false);
+      setSavingName(false);
     }
   }
 
-  async function onLogout() {
-    await logout({ callApi: false });
-    navigate("/auth");
-  }
+  async function onChangePassword(e) {
+    e?.preventDefault?.();
+    setMessage({ type: "", text: "" });
 
-  // NEW: change password handler
-  async function submitChangePassword(e) {
-    e.preventDefault();
-    setPwdMsg("");
     if (!currentPassword || !newPassword) {
-      setPwdMsg("Please fill all password fields.");
+      setMessage({ type: "error", text: "Please fill both current and new password." });
       return;
     }
     if (newPassword !== confirmPassword) {
-      setPwdMsg("New passwords do not match.");
+      setMessage({ type: "error", text: "New passwords do not match." });
       return;
     }
 
     setPwdLoading(true);
     try {
       await usersApi.changePassword({ currentPassword, newPassword });
-      // success — for security force logout and redirect to login
-      setPwdMsg("Password changed successfully. Please sign in again.");
+      // Force logout and redirect to auth screen
+      try {
+        await logout({ callApi: false });
+      } catch {
+        // ignore
+      }
       clearToken();
-      // short timeout to allow user to read message, or redirect immediately:
-      navigate("/auth");
+      setMessage({ type: "success", text: "Password changed. Signing out..." });
+      setTimeout(() => navigate("/auth", { replace: true }), 700);
     } catch (err) {
-      // map 401 to human readable message per backend contract
-      const msg = err?.message || "Change password failed.";
-      if (err?.code === "INVALID_CREDENTIALS" || err?.status === 401) {
-        setPwdMsg("Current password is incorrect.");
+      if (err?.status === 401 || err?.code === "INVALID_CREDENTIALS") {
+        setMessage({ type: "error", text: "Current password is incorrect." });
       } else {
-        setPwdMsg(msg);
+        setMessage({ type: "error", text: err?.message || "Failed to change password." });
       }
     } finally {
       setPwdLoading(false);
-      // clear password fields (safety)
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
@@ -167,173 +149,179 @@ export default function Profile() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Profile</h1>
-          <p className="mt-1 text-sm text-slate-600">Manage your account details.</p>
+    
+    <div className="min-h-screen bg-slate-50 py-12 px-4">
+      <div className="mx-auto max-w-3xl">
+        {/* Stacked cards: top header big card */}
+        <div className="mb-6 rounded-lg px-4 py-3" style={{ border: "4px solid #000", background: "linear-gradient(90deg,#fff,#f8fafc)" }}>
+          <div className="flex items-center gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-md border-4 border-black bg-white">
+              <User2 className="h-6 w-6" />
+            </div>
+            <div>
+              <div className="text-lg font-bold">Solar Notes</div>
+              <div className="text-xs text-slate-600">Profile & security</div>
+            </div>
+          </div>
         </div>
-
-        <Button variant="outline" onClick={onLogout}>
-          <LogOut className="h-4 w-4" />
-          Logout
-        </Button>
-      </div>
-
-      {/* Alerts */}
-      {errorMsg ? (
-        <Alert variant="destructive">
-          <AlertTitle>Action failed</AlertTitle>
-          <AlertDescription>{errorMsg}</AlertDescription>
-        </Alert>
-      ) : null}
-
-      {successMsg ? (
-        <Alert variant="success">
-          <AlertTitle>Done</AlertTitle>
-          <AlertDescription>{successMsg}</AlertDescription>
-        </Alert>
-      ) : null}
-
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* Left: identity card */}
-        <Card className="lg:col-span-1">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <User2 className="h-5 w-5" />
-              Account
-            </CardTitle>
-            <CardDescription>Your basic identity info.</CardDescription>
-          </CardHeader>
-
-          <CardContent>
-            <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-sm font-semibold text-slate-800">
+        <div
+          className="rounded-xl bg-white p-6"
+          style={{
+            border: "6px solid #000", // heavy border
+            backgroundClip: "padding-box",
+          }}
+        >
+          {/* Header row */}
+          <div className="flex flex-col gap-6 md:flex-row md:items-center">
+            {/* chunky square avatar on the left */}
+            <div className="flex items-center justify-center md:w-40 md:flex-none">
+              <div
+                aria-hidden
+                className="h-28 w-28 flex items-center justify-center text-2xl font-bold"
+                style={{
+                  border: "6px solid #000",
+                  backgroundColor: "#f3f4f6",
+                  boxShadow: "6px 6px 0 rgba(0,0,0,1)",
+                }}
+              >
                 {avatarText}
               </div>
-              <div className="min-w-0">
-                <div className="truncate text-sm font-semibold text-slate-900">
-                  {loading ? "Loading..." : (name || "—")}
-                </div>
-                <div className="truncate text-sm text-slate-600">
-                  {loading ? "—" : (email || "—")}
-                </div>
-              </div>
             </div>
 
-            <div className="mt-5 space-y-2 text-xs text-slate-500">
-              <div className="flex items-center justify-between">
-                <span>User</span>
-                <span className="truncate font-mono text-slate-700">
-                  {user?.id || original?.id || "—"}
-                </span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            {/* Name & Email on the right */}
+            <div className="flex-1">
+              <div className="mb-4">
+                <label className="block text-xs font-bold uppercase tracking-wider mb-2">Name</label>
 
-        {/* Right: edit form */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Edit profile</CardTitle>
-            <CardDescription>Update your name or email, then save.</CardDescription>
-          </CardHeader>
-
-          <CardContent>
-            {loading ? (
-              <div className="space-y-3">
-                <div className="h-10 animate-pulse rounded-md border border-slate-200 bg-slate-50" />
-                <div className="h-10 animate-pulse rounded-md border border-slate-200 bg-slate-50" />
-                <div className="h-10 animate-pulse rounded-md border border-slate-200 bg-slate-50" />
-              </div>
-            ) : (
-              <form onSubmit={onSave} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Name</Label>
-                  <Input
-                    id="name"
+                {/* Name field — thick border, strong focus effect */}
+                <div>
+                  <input
+                    aria-label="Name"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    autoComplete="name"
-                    disabled={saving}
+                    className={
+                      "w-full border-4 border-black p-3 text-lg font-semibold " +
+                      "focus:bg-slate-200 focus:outline-none focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+                    }
                     placeholder="Your name"
+                    disabled={savingName || loading}
                   />
                 </div>
+              </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider mb-2">Email</label>
+
+                {/* Disabled, "locked" email field with stripes / disabled appearance */}
+                <div className="relative">
+                  <input
+                    aria-label="Email"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    autoComplete="email"
-                    disabled={saving}
-                    placeholder="you@example.com"
+                    readOnly
+                    disabled
+                    className={
+                      "w-full bg-gray-200 border-4 border-black cursor-not-allowed opacity-80 p-3 text-sm " +
+                      "placeholder:text-slate-500"
+                    }
+                    title="Email cannot be changed here"
                   />
+                  {/* lock icon in corner */}
+                  <div className="pointer-events-none absolute right-3 top-3 text-slate-700">
+                    <Lock className="h-4 w-4" />
+                  </div>
                 </div>
 
-                <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-                  <Button type="button" variant="outline" onClick={onReset} disabled={saving}>
-                    Reset
-                  </Button>
-                  <Button type="submit" disabled={saving}>
-                    <Save className="h-4 w-4" />
-                    {saving ? "Saving..." : "Save changes"}
-                  </Button>
-                </div>
+                <p className="mt-2 text-xs text-slate-600">Email is locked. To change your email, contact support.</p>
+              </div>
+            </div>
+          </div>
 
-                <p className="text-xs text-slate-500">
-                  If your session expires, you’ll be redirected to login automatically.
-                </p>
-              </form>
-            )}
-          </CardContent>
-        </Card>
+          {/* action row: save button for name */}
+          <div className="mt-6 flex justify-end">
+            <button
+              onClick={onSaveName}
+              disabled={savingName || loading}
+              className="inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold text-white"
+              style={{
+                backgroundColor: "#0f172a",
+                border: "4px solid #000",
+                boxShadow: "6px 6px 0 rgba(0,0,0,1)",
+                transform: savingName ? "translateY(2px)" : undefined,
+              }}
+            >
+              <Save className="h-4 w-4" />
+              {savingName ? "Saving..." : "Save profile"}
+            </button>
+          </div>
 
-        {/* NEW: Password change card (place below or in right column) */}
-        <Card className="lg:col-span-3">
-          <CardHeader>
-            <CardTitle>Change Password</CardTitle>
-            <CardDescription>Change your account password. You will be signed out after a successful change.</CardDescription>
-          </CardHeader>
+          {/* divider */}
+          <div className="my-6 h-px w-full bg-slate-100" />
+          {/* Change password inside same card */}
+          <div>
+            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide">Change password</h3>
 
-          <CardContent>
-            {pwdMsg ? (
-              <div className="mb-4">
-                <Alert variant={pwdMsg.toLowerCase().includes("success") ? "success" : "destructive"}>
-                  <AlertTitle>{pwdMsg.toLowerCase().includes("success") ? "Success" : "Error"}</AlertTitle>
-                  <AlertDescription>{pwdMsg}</AlertDescription>
-                </Alert>
+            {message.text ? (
+              <div className={`mb-3 rounded-md p-3 ${message.type === "error" ? "bg-rose-50 text-rose-700" : message.type === "success" ? "bg-emerald-50 text-emerald-700" : "bg-slate-50 text-slate-700"}`} role="status">
+                {message.text}
               </div>
             ) : null}
 
-            <form onSubmit={submitChangePassword} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="currentPassword">Current password</Label>
-                <Input id="currentPassword" type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />
-              </div>
+            <form onSubmit={onChangePassword} className="grid gap-4">
+              <input
+                aria-label="Current password"
+                type="password"
+                placeholder="Current password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                className="w-full border-2 border-slate-300 p-3"
+                disabled={pwdLoading}
+              />
+              <input
+                aria-label="New password"
+                type="password"
+                placeholder="New password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="w-full border-2 border-slate-300 p-3"
+                disabled={pwdLoading}
+              />
+              <input
+                aria-label="Confirm new password"
+                type="password"
+                placeholder="Confirm new password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="w-full border-2 border-slate-300 p-3"
+                disabled={pwdLoading}
+              />
 
-              <div className="space-y-2">
-                <Label htmlFor="newPassword">New password</Label>
-                <Input id="newPassword" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirm new password</Label>
-                <Input id="confirmPassword" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
-              </div>
-
-              <div className="flex items-center justify-end gap-2">
-                <Button type="submit" disabled={pwdLoading}>
-                  {pwdLoading ? "Changing..." : "Change Password"}
-                </Button>
+              {/* Prominent action button with press effect */}
+              <div className="flex justify-end">
+                <button
+                  type="submit"
+                  disabled={pwdLoading}
+                  className="rounded-md px-5 py-3 text-sm font-bold text-white"
+                  style={{
+                    backgroundColor: "#be185d", // vivid tone but not neon
+                    border: "4px solid #000",
+                    boxShadow: "6px 6px 0 rgba(0,0,0,1)",
+                  }}
+                  onMouseDown={(e) => {
+                    // visual press handled by CSS active below
+                    e.currentTarget.style.transform = "translate(4px,4px)";
+                    e.currentTarget.style.boxShadow = "none";
+                  }}
+                  onMouseUp={(e) => {
+                    e.currentTarget.style.transform = "";
+                    e.currentTarget.style.boxShadow = "6px 6px 0 rgba(0,0,0,1)";
+                  }}
+                >
+                  {pwdLoading ? "Changing..." : "Change password"}
+                </button>
               </div>
             </form>
-          </CardContent>
-        </Card>
-        
+          </div>
+        </div>
       </div>
     </div>
   );

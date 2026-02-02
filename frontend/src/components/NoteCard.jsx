@@ -1,28 +1,38 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { Star, Pin, PinIcon } from "lucide-react"; 
+import { Star, Trash2 } from "lucide-react";
 import { Card, CardContent } from "./ui/card";
 import { cn } from "../lib/utils";
 import { formatDate } from "../utils/formatDate";
 
-function stripHtml(html) {
-  if (!html) return "";
-  return String(html)
-    .replace(/<[^>]*>/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-export default function NoteCard({ note, onTogglePin }) {
+/**
+ * Props:
+ * - note: note object
+ * - onTogglePin(noteId, newIsPinned)
+ * - onToggleFavorite(noteId, newIsFavorite)
+ * - onDelete(noteId)
+ */
+export default function NoteCard({ note, onTogglePin, onToggleFavorite, onDelete }) {
   const title = note?.title?.trim() || "Untitled";
-  const preview = stripHtml(note?.content).slice(0, 140);
+  const preview = (note?.content || "").replace(/<[^>]*>/g, "").slice(0, 140);
   const updated = note?.updatedAt ? formatDate(note.updatedAt) : "";
 
-  const handlePinClick = (e) => {
+  const handlePin = (e) => {
     e.preventDefault();
-    if (typeof onTogglePin === "function") {
-      onTogglePin(note.id, !note.isPinned);
-    }
+    e.stopPropagation();
+    if (typeof onTogglePin === "function") onTogglePin(note.id, !note.isPinned);
+  };
+
+  const handleFavorite = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (typeof onToggleFavorite === "function") onToggleFavorite(note.id, !note.isFavorite);
+  };
+
+  const handleDelete = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (typeof onDelete === "function") onDelete(note.id);
   };
 
   return (
@@ -54,20 +64,36 @@ export default function NoteCard({ note, onTogglePin }) {
               )}
             </div>
 
-            {/* Pin button (do not navigate) */}
-            <div className="ml-2 flex items-center">
+            {/* Action buttons */}
+            <div className="ml-2 flex items-center gap-2">
+              {/* Pin button - keep emoji or replace with icon */}
               <button
-                onClick={handlePinClick}
+                onClick={handlePin}
                 aria-label={note.isPinned ? "Unpin note" : "Pin note"}
                 className="rounded-md p-1 text-slate-600 hover:bg-slate-100"
-                onMouseDown={(e) => e.preventDefault()} // prevent Link focus/navigation
+                onMouseDown={(e) => e.preventDefault()}
               >
-                {/* simple visuals: filled pin for pinned */}
-                {note.isPinned ? (
-                  <span className="text-amber-600">📌</span>
-                ) : (
-                  <span className="text-slate-400">📍</span>
-                )}
+                {note.isPinned ? <span className="text-amber-600">📌</span> : <span className="text-slate-400">📍</span>}
+              </button>
+
+              {/* Favorite toggle */}
+              <button
+                onClick={handleFavorite}
+                aria-label={note.isFavorite ? "Remove favorite" : "Favorite note"}
+                className="rounded-md p-1 text-slate-600 hover:bg-slate-100"
+                onMouseDown={(e) => e.preventDefault()}
+              >
+                <Star className={`h-4 w-4 ${note.isFavorite ? "fill-amber-400 text-amber-600" : "text-slate-400"}`} />
+              </button>
+
+              {/* Delete */}
+              <button
+                onClick={handleDelete}
+                aria-label="Delete note"
+                className="rounded-md p-1 text-slate-600 hover:bg-slate-100"
+                onMouseDown={(e) => e.preventDefault()}
+              >
+                <Trash2 className="h-4 w-4" />
               </button>
             </div>
           </div>

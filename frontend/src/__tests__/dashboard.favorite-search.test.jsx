@@ -4,35 +4,35 @@ import Dashboard from "../pages/Dashboard";
 import { test, expect, beforeEach, jest, describe } from "@jest/globals";
 import { MemoryRouter } from "react-router-dom"; 
 
-
 jest.mock("../auth/useAuth", () => ({ useAuth: jest.fn() }));
 import { useAuth } from "../auth/useAuth";
 
 jest.mock("../api/notes.api", () => ({
   notesApi: {
     list: jest.fn(),
-    searchFavoriteNotes: jest.fn(),
+    search: jest.fn(),
     create: jest.fn(),
     pinNote: jest.fn(),
   },
 }));
 import { notesApi } from "../api/notes.api";
 
-describe("Favorite search", () => {
+describe("Favorite search (Enter-only)", () => {
   beforeEach(() => {
     useAuth.mockReturnValue({ user: { name: "Ashar" } });
     notesApi.list.mockReset();
-    notesApi.searchFavoriteNotes.mockReset();
+    notesApi.search.mockReset();
   });
 
-  test("favoritesOnly + query calls searchFavoriteNotes and displays results", async () => {
+  test("toggle favorites with empty query fetches favorites immediately", async () => {
     const user = userEvent.setup();
 
+    // initial load returns nothing
     notesApi.list.mockResolvedValueOnce([]);
-    const favs = [
+    // when toggling favorites (empty query), API should be called with { favorites: true }
+    notesApi.list.mockResolvedValueOnce([
       { id: "f1", title: "Fav One", content: "<p>a</p>", isFavorite: true, createdAt: new Date().toISOString() },
-    ];
-    notesApi.searchFavoriteNotes.mockResolvedValueOnce(favs);
+    ]);
 
     render(
       <MemoryRouter>
@@ -40,17 +40,45 @@ describe("Favorite search", () => {
       </MemoryRouter>
     );
 
-    // Wait for initial load
     expect(await screen.findByText(/no notes yet/i)).toBeInTheDocument();
 
-    // Check favorites only toggle
     await user.click(screen.getByLabelText(/favorites only/i));
-    await user.type(screen.getByPlaceholderText(/search favorites/i), "Fav");
 
-    await user.click(screen.getByRole("button", { name: /search/i }));
+    // verify notesApi.list called with favorites true (last call)
+    expect(notesApi.list).toHaveBeenCalled();
+    const lastParams = notesApi.list.mock.calls[notesApi.list.mock.calls.length - 1][0];
+    expect(lastParams).toMatchObject({ favorites: true });
 
-    // After search, favorite note should be visible
     expect(await screen.findByText(/fav one/i)).toBeInTheDocument();
-    expect(notesApi.searchFavoriteNotes).toHaveBeenCalledWith("Fav");
+  });
+
+  test("with text in query, toggling favorites shows hint and requires Enter", async () => {
+    const user = userEvent.setup();
+
+    notesApi.list.mockResolvedValueOnce([]);
+    render(
+      <MemoryRouter>
+        <Dashboard />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText(/no notes yet/i)).toBeInTheDocument();
+
+    await user.type(screen.getByPlaceholderText(/search notes/i), "hello");
+    await user.click(screen.getByLabelText(/favorites only/i));
+
+    // hint should show
+    expect(await screen.findByText(/press enter to apply filters/i)).toBeInTheDocument();
+
+    // now press Enter
+    notesApi.list.mockResolvedValueOnce([
+      { id: "f2", title: "Hello Fav", content: "<p>h</p>", isFavorite: true, createdAt: new Date().toISOString() },
+    ]);
+    await user.keyboard("{Enter}");
+
+    const lastParams = notesApi.list.mock.calls[notesApi.list.mock.calls.length - 1][0];
+    expect(lastParams).toMatchObject({ q: "hello", favorites: true });
+
+    expect(await screen.findByText(/hello fav/i)).toBeInTheDocument();
   });
 });
