@@ -30,10 +30,18 @@ function findUserByResetTokenHash(resetTokenHash) {
   });
 }
 
+/* return full user record including passwordHash */
+function findUserByIdWithHash(id) {
+  return prisma().user.findUnique({
+    where: { id },
+  });
+}
+
 module.exports = {
   createUser,
   findUserByEmail,
   findUserSafeById,
   updateUserById,
   findUserByResetTokenHash,
+  findUserByIdWithHash, 
 };

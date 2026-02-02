@@ -17,12 +17,17 @@ describe("Auth Service", () => {
   afterEach(() => sinon.restore());
 
   it("should send a mail when forgotPassword is called", async () => {
-    sinon.stub(emailService, "sendMail").resolves(true);
+    sinon.stub(userModel, "findUserByEmail").resolves({ id: "u1", email: "a@b.com" });
+    sinon.stub(crypto, "randomBytes").returns(Buffer.from("a".repeat(32)));
+    sinon.stub(userModel, "updateUserById").resolves(true);
+    const emailService = require("../../src/services/email.service");
+    sinon.stub(emailService, "sendMail").resolves({ messageId: "x" });
+  
     const res = await authService.forgotPassword({ email: "a@b.com" });
     expect(res).to.have.property("message");
-    expect(emailService.sendMail.calledOnce).to.equal(true);
+    sinon.assert.calledOnce(emailService.sendMail);
   });
-  
+
   it("POST /auth/register -> registers user", async () => {
     sinon.stub(userModel, "findUserByEmail").resolves(null);
     sinon.stub(bcrypt, "hash").resolves("hashed");
@@ -48,15 +53,16 @@ describe("Auth Service", () => {
     expect(res).to.deep.equal({ success: true });
   });
 
-  it("POST /auth/forgot-password -> issues reset token", async () => {
+  it("POST /auth/forgot-password -> issues reset token (dev test asserts email sent)", async () => {
     sinon.stub(userModel, "findUserByEmail").resolves({ id: "u1", email: "a@b.com" });
-
     sinon.stub(crypto, "randomBytes").returns(Buffer.from("a".repeat(32)));
     sinon.stub(userModel, "updateUserById").resolves(true);
-
+    const emailService = require("../../src/services/email.service");
+    sinon.stub(emailService, "sendMail").resolves({ messageId: "x" });
+  
     const res = await authService.forgotPassword({ email: "a@b.com" });
-    expect(res).to.have.property("resetToken");
-    expect(res).to.have.property("expiresAt");
+    expect(res).to.have.property("message");
+    sinon.assert.calledOnce(emailService.sendMail);
   });
 
   it("POST /auth/reset-password -> resets password", async () => {

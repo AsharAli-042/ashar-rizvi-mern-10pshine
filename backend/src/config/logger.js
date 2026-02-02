@@ -11,6 +11,7 @@ const logger = pino({
       "req.headers.authorization",
       "req.body.password",
       "req.body.newPassword",
+      "req.body.currentPassword", 
       "req.body.token",
     ],
     remove: true,
@@ -22,6 +23,7 @@ function httpLogger() {
     logger,
     customLogLevel: (res, err) => {
       if (err || res.statusCode >= 500) return "error";
+      if (res.statusCode === 404) return "info";
       if (res.statusCode >= 400) return "warn";
       return "info";
     },

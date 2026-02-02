@@ -2,8 +2,23 @@ const ApiError = require("../utils/ApiError");
 const noteModel = require("../models/note.model");
 const { logger } = require("../config/logger");
 
-async function listNotes(userId) {
+async function listNotes(userId, options = {}) {
   if (!userId) throw new ApiError(401, "Unauthorized", "UNAUTHORIZED");
+
+  const q = options.q ? String(options.q).trim() : "";
+  const favoritesOnly = options.favorites === true || options.favorites === "true";
+
+  if (favoritesOnly) {
+    // search among favorites (if q present, will filter)
+    return noteModel.searchFavoriteNotesByUser(userId, q);
+  }
+
+  if (q) {
+    // general search across all notes
+    return noteModel.searchNotesByUser(userId, q);
+  }
+
+  // no filters => return default list
   return noteModel.listNotesByUser(userId);
 }
 
@@ -57,5 +72,19 @@ async function deleteNote(userId, noteId) {
   logger.info({ userId, noteId }, "Note deleted");
   return { success: true };
 }
+/* pin/unpin note */
+async function pinNote(userId, noteId, isPinned) {
+  if (!userId) throw new ApiError(401, "Unauthorized", "UNAUTHORIZED");
+  const updated = await noteModel.setPinForNoteByUser(noteId, userId, Boolean(isPinned));
+  if (!updated) throw new ApiError(404, "Note not found", "NOTE_NOT_FOUND");
+  logger.info({ userId, noteId, isPinned }, "Note pin state changed");
+  return updated;
+}
 
-module.exports = { listNotes, createNote, getNote, updateNote, deleteNote };
+/* search favorites */
+async function searchFavorites(userId, query) {
+  if (!userId) throw new ApiError(401, "Unauthorized", "UNAUTHORIZED");
+  return noteModel.searchFavoriteNotesByUser(userId, query);
+}
+
+module.exports = { listNotes, createNote, getNote, updateNote, deleteNote, pinNote, searchFavorites };
