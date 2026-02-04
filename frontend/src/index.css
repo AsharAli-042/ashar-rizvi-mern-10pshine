@@ -6,3 +6,28 @@
 html, body, #root {
     height: 100%;
   }
+
+  /* Custom scrollbar styling for Solar Brutalism */
+::-webkit-scrollbar {
+  width: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: #FFF500;
+  border-left: 3px solid #000000;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #000000;
+  border: 2px solid #FFF500;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #FF00FF;
+}
+
+/* For Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #000000 #FFF500;
+}
