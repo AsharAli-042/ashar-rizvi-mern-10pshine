@@ -1,14 +1,10 @@
 import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Home, User, LogOut } from "lucide-react";
+import { Home, User, LogOut, Sun } from "lucide-react";
 import { useAuth } from "../auth/useAuth";
 
 /**
- * Floating Pill Navbar (Floating Dock)
- * - Only: Dashboard, Profile, Logout
- * - Detached, border-4 black, hard shadow: shadow-[6px_6px_0px_black]
- * - Pressing an item gives a "sink" effect
- * - Active route is highlighted; Profile shows filled color on /profile
+ * Solar Brutalism Floating Navbar
  */
 const NAV_ITEMS = [
   { id: "dashboard", label: "Dashboard", path: "/dashboard", icon: Home },
@@ -23,95 +19,103 @@ export default function Navbar() {
   const [pressed, setPressed] = useState(null);
   const pathname = loc.pathname || "";
 
-  // hide nav items on auth routes
+  // Hide nav on auth routes
   const isAuthRoute =
     pathname === "/auth" ||
     pathname.startsWith("/forgot") ||
     pathname.startsWith("/reset-password") ||
     pathname === "/register" ||
-    pathname === "/login";
+    pathname === "/login" ||
+    pathname === "/404";
 
   function handleClick(item) {
     setPressed(item.id);
-    // sink animation duration ~180ms
-    setTimeout(() => setPressed(null), 180);
+    setTimeout(() => setPressed(null), 150);
     navigate(item.path);
   }
 
   async function handleLogout() {
     setPressed("logout");
     try {
-      // call AuthProvider logout to clear token + user state
       await logout({ callApi: false });
     } catch {
       // ignore
     } finally {
-      setTimeout(() => setPressed(null), 180);
+      setTimeout(() => setPressed(null), 150);
       navigate("/auth", { replace: true });
     }
   }
 
+  if (isAuthRoute) return null;
+
   return (
     <nav
-      aria-label="Primary"
-      className="fixed left-1/2 bottom-6 z-50 -translate-x-1/2"
-      style={{ pointerEvents: "auto" }}
+      aria-label="Primary navigation"
+      className="fixed left-1/2 bottom-8 z-50 -translate-x-1/2"
     >
-      <div
-        className="flex items-center gap-3 rounded-full bg-white px-4 py-3"
-        style={{
-          border: "4px solid black",
-          boxShadow: "6px 6px 0px 0px black",
-        }}
+      <div className="flex items-center gap-2 border-[4px] border-black bg-white px-3 py-2 shadow-[8px_8px_0px_0px_#000000]"
+        style={{ borderRadius: '100px' }}
       >
-        {isAuthRoute ? (
-          <div className="mx-auto w-full text-center">
-            <span className="font-bold text-sm tracking-tight">Solar Notes</span>
+        {/* Logo/Brand */}
+        <div className="flex items-center gap-2 pr-3 border-r-[3px] border-black">
+          <div className="flex h-10 w-10 items-center justify-center border-[2px] border-black bg-[#FFF500]" style={{ borderRadius: '50%' }}>
+            <Sun className="h-5 w-5 text-black" />
           </div>
-        ) : (
-          <>
-            {NAV_ITEMS.map((it) => {
-              const Icon = it.icon;
-              const isActive = pathname === it.path || (it.path === "/dashboard" && pathname === "/");
-              const isPressed = pressed === it.id;
-              const baseClasses =
-                "flex cursor-pointer select-none items-center gap-2 rounded-full px-3 py-2 text-sm font-medium transition-all";
-              const activeClasses = isActive
-                ? "bg-slate-900 text-white"
-                : "bg-white text-slate-700 hover:bg-slate-100";
-              const pressedStyle = isPressed
-                ? { transform: "translateY(4px)", boxShadow: "none", opacity: 0.98 }
-                : {};
+          <span className="hidden sm:inline text-sm font-bold uppercase text-black">Solar Notes</span>
+        </div>
 
-              return (
-                <button
-                  key={it.id}
-                  onClick={() => handleClick(it)}
-                  aria-current={isActive ? "page" : undefined}
-                  className={baseClasses + " " + activeClasses}
-                  style={pressedStyle}
-                  title={it.label}
-                >
-                  <Icon className="h-4 w-4" />
-                  <span className="hidden sm:inline">{it.label}</span>
-                </button>
-              );
-            })}
+        {/* Nav Items */}
+        {NAV_ITEMS.map((item) => {
+          const Icon = item.icon;
+          const isActive = pathname === item.path || (item.path === "/dashboard" && pathname === "/");
+          const isPressed = pressed === item.id;
 
-            <div className="w-px bg-slate-200 h-6" />
-
+          return (
             <button
-              onClick={handleLogout}
-              aria-label="Logout"
-              className="flex cursor-pointer items-center gap-2 rounded-full bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
-              style={pressed === "logout" ? { transform: "translateY(4px)", boxShadow: "none" } : {}}
+              key={item.id}
+              onClick={() => handleClick(item)}
+              aria-current={isActive ? "page" : undefined}
+              className={cn(
+                "flex items-center gap-2 px-4 py-2 text-sm font-bold uppercase transition-all border-[2px] border-black",
+                isActive
+                  ? "bg-[#FFF500] text-black shadow-[3px_3px_0px_0px_#000000]"
+                  : "bg-white text-black hover:bg-[#FFF500]/30",
+                isPressed && "translate-x-[3px] translate-y-[3px] shadow-none"
+              )}
+              style={{ borderRadius: '100px' }}
+              title={item.label}
             >
-              <LogOut className="h-4 w-4" />
-              <span className="hidden sm:inline">Logout</span>
+              <Icon className="h-4 w-4" />
+              <span className="hidden sm:inline">{item.label}</span>
             </button>
-          </>
-        )}
+          );
+        })}
+
+        {/* Divider */}
+        <div className="w-[3px] bg-black h-8" />
+
+        {/* Logout */}
+        <button
+          onClick={handleLogout}
+          aria-label="Logout"
+          className={cn(
+            "flex items-center gap-2 px-4 py-2 text-sm font-bold uppercase transition-all border-[2px] border-black bg-[#FF0000] text-white hover:bg-[#FF0000]/90",
+            pressed === "logout" && "translate-x-[3px] translate-y-[3px] shadow-none"
+          )}
+          style={{ 
+            borderRadius: '100px',
+            boxShadow: pressed === "logout" ? 'none' : '3px 3px 0px 0px #000000'
+          }}
+        >
+          <LogOut className="h-4 w-4" />
+          <span className="hidden sm:inline">Logout</span>
+        </button>
       </div>
     </nav>
   );
+}
+
+// Helper function (add to utils or inline)
+function cn(...classes) {
+  return classes.filter(Boolean).join(' ');
 }

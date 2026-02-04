@@ -81,7 +81,7 @@ export default function AuthPage() {
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#FFF500] p-6 lg:p-8">
+    <div className="relative min-h-screen overflow-hidden bg-[#FFDC00] p-6 lg:p-8">
       {/* Simplified background patterns - less busy */}
       <div className="fixed inset-0 -z-10">
         {/* Subtle diagonal stripes */}

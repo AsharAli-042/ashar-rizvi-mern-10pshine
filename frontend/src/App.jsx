@@ -14,46 +14,51 @@ import NotFound from "./pages/NotFound.jsx";
 export default function App() {
   const location = useLocation();
 
-  // Pages that need full-screen backgrounds (no max-width wrapper)
-  const fullScreenRoutes = [
-    '/auth',
-    '/forgot-password',
-    '/reset-password'
+  // Pages that need constrained layout (max-width wrapper)
+  const constrainedRoutes = [
+    '/notes/new',
+    '/profile',
   ];
 
-  const isFullScreen = fullScreenRoutes.includes(location.pathname);
+  // Check if current route starts with /notes/ and has an ID
+  const isNoteEditor = location.pathname.startsWith('/notes/') && location.pathname !== '/notes/new';
+  
+  const isConstrained = constrainedRoutes.includes(location.pathname) || isNoteEditor;
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
+    <div className="min-h-screen">
       <Navbar />
 
-      {/* Conditional wrapper - full screen for auth pages, constrained for app pages */}
-      {isFullScreen ? (
-        // Full screen for auth pages (no max-width constraint)
-        <Routes>
-          <Route path="/auth" element={<AuthPage />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
-        </Routes>
-      ) : (
-        // Constrained layout for dashboard/app pages
-        <main className="mx-auto w-full max-w-5xl px-4 py-6">
+      {isConstrained ? (
+        // Constrained layout for note editor and profile
+        <main className="mx-auto w-full max-w-5xl px-4 py-6 min-h-screen bg-slate-50">
           <Routes>
-            {/* Default */}
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-
-            {/* Protected */}
             <Route element={<ProtectedRoute />}>
-              <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/notes/new" element={<NoteEditor />} />
               <Route path="/notes/:id" element={<NoteEditor />} />
               <Route path="/profile" element={<Profile />} />
             </Route>
-
-            {/* 404 */}
-            <Route path="*" element={<NotFound />} />
           </Routes>
         </main>
+      ) : (
+        // Full screen for all other pages
+        <Routes>
+          {/* Auth routes */}
+          <Route path="/auth" element={<AuthPage />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+
+          {/* Default */}
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+
+          {/* Protected routes */}
+          <Route element={<ProtectedRoute />}>
+            <Route path="/dashboard" element={<Dashboard />} />
+          </Route>
+
+          {/* 404 */}
+          <Route path="*" element={<NotFound />} />
+        </Routes>
       )}
     </div>
   );

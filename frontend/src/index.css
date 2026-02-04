@@ -31,3 +31,12 @@ html, body, #root {
   scrollbar-width: thin;
   scrollbar-color: #000000 #FFF500;
 }
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}

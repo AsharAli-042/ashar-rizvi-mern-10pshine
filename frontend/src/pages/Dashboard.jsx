@@ -1,6 +1,6 @@
-import { useEffect, /*useRef,*/ useState } from "react";
-import { Link, /*useNavigate*/ } from "react-router-dom";
-import { Plus } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { Plus, Search, Star, Sun, Sparkles } from "lucide-react";
 
 import { notesApi } from "../api/notes.api";
 import { useAuth } from "../auth/useAuth";
@@ -11,6 +11,7 @@ import { Input } from "../components/ui/input";
 import { Alert, AlertDescription, AlertTitle } from "../components/ui/alert";
 import NoteList from "../components/NoteList";
 import TemplateModal from "../components/TemplateModal";
+import Loading, { SkeletonLoader } from "../components/Loading";
 
 /* sortNotes helper */
 function sortNotes(notes = []) {
@@ -31,23 +32,17 @@ function sortNotes(notes = []) {
 
 export default function Dashboard() {
   const { user } = useAuth();
-  // const navigate = useNavigate();
 
   const [notes, setNotes] = useState([]);
   const [loading, setLoading] = useState(true);
-  // const [creating, setCreating] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
   const [query, setQuery] = useState("");
   const [favoritesOnly, setFavoritesOnly] = useState(false);
 
-  // eslint-disable-next-line no-unused-vars
   const [searchLoading, setSearchLoading] = useState(false);
-  const [hintMsg, setHintMsg] = useState("");
 
   const [templateOpen, setTemplateOpen] = useState(false);
-
-  // const didMountRef = useRef(false);
 
   useEffect(() => {
     loadNotes();
@@ -70,7 +65,6 @@ export default function Dashboard() {
   async function performSearch({ q = "", favorites = false } = {}) {
     setErrorMsg("");
     setSearchLoading(true);
-    setHintMsg("");
     try {
       const params = {};
       if (q && q.trim() !== "") params.q = q.trim();
@@ -97,14 +91,13 @@ export default function Dashboard() {
     }
   }
 
+  function onSearchClick() {
+    performSearch({ q: query, favorites: favoritesOnly });
+  }
+
   async function onToggleFavorites(v) {
     setFavoritesOnly(v);
-    setHintMsg("");
-    if (!query || query.trim() === "") {
-      await performSearch({ q: "", favorites: v });
-    } else {
-      setHintMsg("Press Enter to apply filters");
-    }
+    await performSearch({ q: query, favorites: v });
   }
 
   // pin optimistic update
@@ -163,74 +156,130 @@ export default function Dashboard() {
     setTemplateOpen(true);
   }
 
+  // Get greeting based on time of day
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good Morning";
+    if (hour < 18) return "Good Afternoon";
+    return "Good Evening";
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen bg-[#FFF500] p-6 pb-24">
       <TemplateModal open={templateOpen} onClose={() => setTemplateOpen(false)} />
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Dashboard</h1>
-          <p className="mt-1 text-sm text-slate-600">{user?.name ? `Welcome back, ${user.name}.` : "Your notes, all in one place."}</p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Button asChild>
-            <Link to="/notes/new">
-              <Plus className="h-4 w-4" />
-              New note
-            </Link>
-          </Button>
-
-          <Button onClick={openTemplateModal}>Template</Button>
-        </div>
-      </div>
-
-      {errorMsg ? (
-        <Alert variant="destructive">
-          <AlertTitle>Action failed</AlertTitle>
-          <AlertDescription>{errorMsg}</AlertDescription>
-        </Alert>
-      ) : null}
-
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Quick actions</CardTitle>
-          <CardDescription>Open an editor or create a templated note for common workflows.</CardDescription>
-        </CardHeader>
-
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <div className="sm:col-span-2">
-              <Input
-                placeholder={favoritesOnly ? "Search favorites… (press Enter to apply)" : "Search notes… (press Enter to apply)"}
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                onKeyDown={onSearchKeyDown}
-              />
-              {hintMsg ? <div className="mt-1 text-xs text-slate-500">{hintMsg}</div> : null}
+      <div className="mx-auto max-w-7xl space-y-6">
+        {/* Header */}
+        <div className="border-[4px] border-black bg-white p-6 shadow-[6px_6px_0px_0px_#000000]">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex h-16 w-16 items-center justify-center border-[3px] border-black bg-[#FFF500]">
+                <Sun className="h-9 w-9 text-black" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold uppercase tracking-tight text-black">
+                  {getGreeting()}
+                  {user?.name && ", " + user.name.split(" ")[0]}!
+                </h1>
+                <p className="mt-1 text-sm font-medium text-black/70">
+                  {notes.length} {notes.length === 1 ? "note" : "notes"} in your workspace
+                </p>
+              </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <label className="inline-flex items-center gap-2 text-sm text-slate-700">
-                <input aria-label="Favorites only" type="checkbox" checked={favoritesOnly} onChange={(e) => onToggleFavorites(e.target.checked)} />
-                Favorites only
-              </label>
+            {/* Action buttons */}
+            <div className="flex items-center gap-3">
+              <Button onClick={openTemplateModal} variant="secondary">
+                <Sparkles className="h-4 w-4" />
+                Template
+              </Button>
+              <Button asChild>
+                <Link to="/notes/new">
+                  <Plus className="h-4 w-4" />
+                  New Note
+                </Link>
+              </Button>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
 
-      {loading ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-40 animate-pulse rounded-xl border border-slate-200 bg-white" />
-          ))}
-        </div>
-      ) : (
-        <div>
-          <NoteList notes={notes} onTogglePin={onTogglePin} onToggleFavorite={onToggleFavorite} onDelete={onDelete} />
-        </div>
-      )}
+        {/* Error Alert */}
+        {errorMsg ? (
+          <Alert variant="destructive" onDismiss={() => setErrorMsg("")}>
+            <AlertTitle>⚠️ Action Failed</AlertTitle>
+            <AlertDescription>{errorMsg}</AlertDescription>
+          </Alert>
+        ) : null}
+
+        {/* Search & Filter Card */}
+        <Card className="border-[4px] border-black bg-white shadow-[6px_6px_0px_0px_#FF00FF]">
+          <CardHeader className="border-b-[3px] border-black">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center border-[3px] border-black bg-[#00FFFF]">
+                <Search className="h-5 w-5 text-black" />
+              </div>
+              <div>
+                <CardTitle className="text-lg font-bold uppercase">Search & Filter</CardTitle>
+                <CardDescription className="text-sm font-medium text-black/70">
+                  Find your notes quickly
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+
+          <CardContent className="p-6">
+            <div className="flex flex-col gap-3 sm:flex-row">
+              {/* Search input */}
+              <div className="flex-1">
+                <Input
+                  placeholder="Search notes..."
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  onKeyDown={onSearchKeyDown}
+                />
+              </div>
+
+              {/* Favorites checkbox */}
+              <label className="flex items-center gap-3 border-[3px] border-black bg-white px-4 py-3 cursor-pointer hover:bg-[#FFD6E8] transition-colors">
+                <input
+                  type="checkbox"
+                  checked={favoritesOnly}
+                  onChange={(e) => onToggleFavorites(e.target.checked)}
+                  className="h-5 w-5 cursor-pointer border-[2px] border-black accent-[#FFF500]"
+                />
+                <div className="flex items-center gap-2">
+                  <Star className={`h-4 w-4 ${favoritesOnly ? 'fill-[#FFF500] text-[#FFF500]' : 'text-black'}`} />
+                  <span className="text-sm font-bold uppercase text-black whitespace-nowrap">
+                    Favorites Only
+                  </span>
+                </div>
+              </label>
+
+              {/* Search button */}
+              <Button onClick={onSearchClick} disabled={searchLoading} variant="secondary">
+                {searchLoading ? "Searching..." : "Search"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Notes List */}
+        {loading ? (
+          <div className="space-y-4">
+            <Loading label="Loading your notes..." />
+            <SkeletonLoader count={3} />
+          </div>
+        ) : (
+          <div>
+            <NoteList
+              notes={notes}
+              onTogglePin={onTogglePin}
+              onToggleFavorite={onToggleFavorite}
+              onDelete={onDelete}
+            />
+          </div>
+        )}
+      </div>
     </div>
   );
 }
