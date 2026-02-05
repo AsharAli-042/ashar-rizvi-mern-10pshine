@@ -67,6 +67,10 @@ export default function NoteEditor() {
   const pageTitle = useMemo(() => (isEdit ? "Edit Note" : "New Note"), [isEdit]);
 
   useEffect(() => {
+    document.title = "Solar Editor";
+  }, []);
+
+  useEffect(() => {
     let ignore = false;
 
     async function loadNote() {

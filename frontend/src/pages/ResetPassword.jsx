@@ -1,5 +1,5 @@
 import { Link, useSearchParams } from "react-router-dom";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect  } from "react";
 import { authApi } from "../api/auth.api";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
@@ -19,6 +19,10 @@ export default function ResetPassword() {
   const [submitting, setSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
+
+  useEffect(() => {
+    document.title = "Reset Password";
+  }, []);
 
   async function onSubmit(e) {
     e.preventDefault();

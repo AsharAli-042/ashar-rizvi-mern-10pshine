@@ -43,6 +43,10 @@ export default function Profile() {
     user?.name,
     user?.email,
   ]);
+  
+  useEffect(() => {
+    document.title = "Solar Profile";
+  }, []);
 
   useEffect(() => {
     let ignore = false;

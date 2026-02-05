@@ -13,6 +13,18 @@ import NoteList from "../components/NoteList";
 import TemplateModal from "../components/TemplateModal";
 import Loading, { SkeletonLoader } from "../components/Loading";
 
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from "../components/ui/alert-dialog";
+
 /* sortNotes helper */
 function sortNotes(notes = []) {
   return [...notes].sort((a, b) => {
@@ -44,6 +56,14 @@ export default function Dashboard() {
 
   const [templateOpen, setTemplateOpen] = useState(false);
 
+  // State for delete dialog
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [noteToDelete, setNoteToDelete] = useState(null);
+
+  useEffect(() => {
+    document.title = "Solar Dashboard";
+  }, []);
+
   useEffect(() => {
     loadNotes();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -72,7 +92,7 @@ export default function Dashboard() {
 
       const data = await notesApi.list(params);
       setNotes(sortNotes(Array.isArray(data) ? data : []));
-    // eslint-disable-next-line no-unused-vars
+      // eslint-disable-next-line no-unused-vars
     } catch (err) {
       try {
         const data = await notesApi.search(q || "", favorites || false);
@@ -134,21 +154,28 @@ export default function Dashboard() {
     }
   }
 
-  // delete with a simple confirm and optimistic removal
-  async function onDelete(id) {
-    setErrorMsg("");
-    const confirmed = window.confirm("Are you sure you want to delete this note? This action cannot be undone.");
-    if (!confirmed) return;
+  // Replace the onDelete function
+  function handleDeleteClick(id) {
+    setNoteToDelete(id);
+    setDeleteDialogOpen(true);
+  }
 
+  async function confirmDelete() {
+    if (!noteToDelete) return;
+
+    setErrorMsg("");
     const prev = notes;
-    setNotes((prevNotes) => prevNotes.filter((n) => n.id !== id));
+    setNotes((prevNotes) => prevNotes.filter((n) => n.id !== noteToDelete));
 
     try {
-      await notesApi.remove(id);
+      await notesApi.remove(noteToDelete);
       // success: already removed from UI
     } catch (err) {
       setNotes(prev);
       setErrorMsg(err?.message || "Delete failed.");
+    } finally {
+      setDeleteDialogOpen(false);
+      setNoteToDelete(null);
     }
   }
 
@@ -181,9 +208,9 @@ export default function Dashboard() {
                   {getGreeting()}
                   {user?.name && ", " + user.name.split(" ")[0]}!
                 </h1>
-                <p className="mt-1 text-sm font-medium text-black/70">
+                {/* <p className="mt-1 text-sm font-medium text-black/70">
                   {notes.length} {notes.length === 1 ? "note" : "notes"} in your workspace
-                </p>
+                </p> */}
               </div>
             </div>
 
@@ -275,8 +302,28 @@ export default function Dashboard() {
               notes={notes}
               onTogglePin={onTogglePin}
               onToggleFavorite={onToggleFavorite}
-              onDelete={onDelete}
+              onDelete={handleDeleteClick}  // Changed this
             />
+
+            {/* Delete Confirmation Dialog */}
+            <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete This Note?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This action cannot be undone. The note will be permanently removed from your workspace.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel onClick={() => setDeleteDialogOpen(false)}>
+                    Cancel
+                  </AlertDialogCancel>
+                  <AlertDialogAction onClick={confirmDelete}>
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         )}
       </div>

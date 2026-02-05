@@ -20,7 +20,7 @@ export default function AuthPage() {
   const location = useLocation();
 
   useEffect(() => {
-    document.title = "Solar Notes — Sign in";
+    document.title = "Solar Sign in";
   }, []);
 
   const redirectTo = useMemo(() => location.state?.from || "/dashboard", [location.state]);

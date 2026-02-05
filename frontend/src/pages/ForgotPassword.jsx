@@ -8,6 +8,7 @@ import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "../components/ui/alert";
 import { ArrowLeft, Mail, Sun } from "lucide-react";
+import { useEffect } from "react";
 
 function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || "").trim());
@@ -17,6 +18,10 @@ export default function ForgotPassword() {
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
+
+  useEffect(() => {
+    document.title = "Forgot Password";
+  }, []);
 
   async function onSubmit(e) {
     e.preventDefault();

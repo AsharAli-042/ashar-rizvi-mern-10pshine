@@ -1,7 +1,12 @@
 import { Link } from "react-router-dom";
 import { Home, Sun, AlertCircle } from "lucide-react";
+import { useEffect } from "react";
 
 export default function NotFound() {
+  useEffect(() => {
+    document.title = "Not Found";
+  }, []);
+
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#FFF500] p-6">
       {/* Simplified background patterns */}
