@@ -22,7 +22,7 @@ export default function App() {
 
   // Check if current route starts with /notes/ and has an ID
   const isNoteEditor = location.pathname.startsWith('/notes/') && location.pathname !== '/notes/new';
-  
+
   const isConstrained = constrainedRoutes.includes(location.pathname) || isNoteEditor;
 
   return (
@@ -30,16 +30,18 @@ export default function App() {
       <Navbar />
 
       {isConstrained ? (
-        // Constrained layout for note editor and profile
-        <main className="mx-auto w-full max-w-5xl px-4 py-6 min-h-screen bg-slate-50">
-          <Routes>
-            <Route element={<ProtectedRoute />}>
-              <Route path="/notes/new" element={<NoteEditor />} />
-              <Route path="/notes/:id" element={<NoteEditor />} />
-              <Route path="/profile" element={<Profile />} />
-            </Route>
-          </Routes>
-        </main>
+        // Constrained layout for note editor and profile with yellow background
+        <div className="min-h-screen bg-[#FFF500] pb-24">
+          <main className="mx-auto w-full max-w-5xl px-4 py-6">
+            <Routes>
+              <Route element={<ProtectedRoute />}>
+                <Route path="/notes/new" element={<NoteEditor />} />
+                <Route path="/notes/:id" element={<NoteEditor />} />
+                <Route path="/profile" element={<Profile />} />
+              </Route>
+            </Routes>
+          </main>
+        </div>
       ) : (
         // Full screen for all other pages
         <Routes>

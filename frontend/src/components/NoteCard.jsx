@@ -6,8 +6,7 @@ import { cn } from "../lib/utils";
 import { formatDate } from "../utils/formatDate";
 
 // Bright color palette for note cards - rotates based on index
-const NOTE_COLORS = [
-  { bg: "#FFF500", shadow: "#FF00FF", border: "#000000" }, // Yellow + Magenta shadow
+const NOTE_COLORS = [ 
   { bg: "#00FFFF", shadow: "#FF6B00", border: "#000000" }, // Cyan + Orange shadow
   { bg: "#FF00FF", shadow: "#00FF00", border: "#000000" }, // Magenta + Lime shadow
   { bg: "#FF6B00", shadow: "#00FFFF", border: "#000000" }, // Orange + Cyan shadow

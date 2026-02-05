@@ -6,7 +6,7 @@ import { Label } from "./ui/label";
 import { notesApi } from "../api/notes.api";
 import { useNavigate } from "react-router-dom";
 import { cn } from "../lib/utils";
-import { FileText, Clipboard, Calendar, CheckSquare, Sparkles } from "lucide-react";
+import { FileText, Clipboard, Calendar, CheckSquare, Sparkles, Layers } from "lucide-react";
 
 /* Template definitions with icons and colors */
 const TEMPLATES = [
@@ -14,12 +14,12 @@ const TEMPLATES = [
         id: "meeting-minutes",
         name: "Meeting Minutes",
         icon: Clipboard,
-        color: "#FFF500", // Yellow
-        shadowColor: "#FF00FF", // Magenta
+        color: "#FFF500",
+        shadowColor: "#FF00FF",
         description: "Focus: Decisions and Accountability. Clean action items and ownership.",
         content:
             `<h2>Meeting Minutes</h2>
-<p><strong>Focus:</strong> Decisions and Accountability.</p>
+<p><strong>Focus:</strong> Decisions and Accountability</p>
 <p><strong>Subject:</strong> [Meeting Name] &nbsp; <strong>Date:</strong> [Date] &nbsp; <strong>Attendees:</strong> [Names]</p>
 <h3>Main Discussion</h3>
 <p>[Notes]</p>
@@ -35,8 +35,8 @@ const TEMPLATES = [
         id: "daily-reflection",
         name: "Daily Reflection",
         icon: Sparkles,
-        color: "#00FFFF", // Cyan
-        shadowColor: "#FF6B00", // Orange
+        color: "#00FFFF",
+        shadowColor: "#FF6B00",
         description: "Short prompts to reflect on wins, lessons, and plan for tomorrow.",
         content:
             `<h2>Daily Reflection</h2>
@@ -50,36 +50,56 @@ const TEMPLATES = [
 <p><em>Gratitude:</em> [One thing I'm thankful for]</p>`
     },
     {
-        id: "weekly-meal-planner",
-        name: "Meal Planner",
-        icon: Calendar,
-        color: "#FF00FF", // Magenta
-        shadowColor: "#00FF00", // Lime
-        description: "Plan meals, shopping list, and quick prep notes.",
+        id: "project-planning",
+        name: "Project Plan",
+        icon: Layers,
+        color: "#FF00FF",
+        shadowColor: "#00FF00",
+        description: "Organize project goals, milestones, and track progress effectively.",
         content:
-            `<h2>Weekly Meal Planner</h2>
-<p><strong>Week:</strong> [Start date – End date]</p>
-<table>
-<thead><tr><th>Day</th><th>Breakfast</th><th>Lunch</th><th>Dinner</th></tr></thead>
-<tbody>
-<tr><td>Monday</td><td></td><td></td><td></td></tr>
-<tr><td>Tuesday</td><td></td><td></td><td></td></tr>
-<tr><td>Wednesday</td><td></td><td></td><td></td></tr>
-<tr><td>Thursday</td><td></td><td></td><td></td></tr>
-<tr><td>Friday</td><td></td><td></td><td></td></tr>
-<tr><td>Saturday</td><td></td><td></td><td></td></tr>
-<tr><td>Sunday</td><td></td><td></td><td></td></tr>
-</tbody>
-</table>
-<h3>Shopping List</h3>
-<ul><li></li></ul>`
+            `<h2>Project Planning</h2>
+<p><strong>Project Name:</strong> [Name]</p>
+<p><strong>Start Date:</strong> [Date] &nbsp; <strong>Deadline:</strong> [Date]</p>
+<p><strong>Team Members:</strong> [Names]</p>
+<h3>🎯 Project Goals</h3>
+<ul>
+<li>[Goal 1]</li>
+<li>[Goal 2]</li>
+<li>[Goal 3]</li>
+</ul>
+<h3>📋 Key Milestones</h3>
+<p><strong>Phase 1: Planning</strong></p>
+<ul>
+<li>[ ] Define requirements</li>
+<li>[ ] Create timeline</li>
+<li>[ ] Assign resources</li>
+</ul>
+<p><strong>Phase 2: Development</strong></p>
+<ul>
+<li>[ ] Build core features</li>
+<li>[ ] Testing &amp; QA</li>
+<li>[ ] Documentation</li>
+</ul>
+<p><strong>Phase 3: Launch</strong></p>
+<ul>
+<li>[ ] Final review</li>
+<li>[ ] Deployment</li>
+<li>[ ] Post-launch monitoring</li>
+</ul>
+<h3>⚠️ Risks &amp; Challenges</h3>
+<ul>
+<li>[Risk 1] — Mitigation: [Strategy]</li>
+<li>[Risk 2] — Mitigation: [Strategy]</li>
+</ul>
+<h3>📝 Notes</h3>
+<p>[Additional notes, dependencies, or important information]</p>`
     },
     {
         id: "todo-list",
         name: "To-Do List",
         icon: CheckSquare,
-        color: "#FF6B00", // Orange
-        shadowColor: "#00FFFF", // Cyan
+        color: "#FF6B00",
+        shadowColor: "#00FFFF",
         description: "Simple task list to capture work & personal tasks.",
         content:
             `<h2>To-Do</h2>
