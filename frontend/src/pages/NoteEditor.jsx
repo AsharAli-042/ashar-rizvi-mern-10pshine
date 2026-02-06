@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
-import { ArrowLeft, Save, Trash2, Star } from "lucide-react";
+import { ArrowLeft, Save, Trash2, Star, FileText } from "lucide-react";
 
 import { notesApi } from "../api/notes.api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
@@ -26,8 +26,9 @@ const quillModules = {
     [{ header: [1, 2, 3, false] }],
     ["bold", "italic", "underline", "strike"],
     [{ list: "ordered" }, { list: "bullet" }],
+    [{ indent: "-1" }, { indent: "+1" }],
     ["blockquote", "code-block"],
-    ["link"],
+    ["link", "image"],
     ["clean"],
   ],
 };
@@ -40,9 +41,11 @@ const quillFormats = [
   "strike",
   "list",
   "bullet",
+  "indent",
   "blockquote",
   "code-block",
   "link",
+  "image",
 ];
 
 export default function NoteEditor() {
@@ -61,7 +64,11 @@ export default function NoteEditor() {
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
 
-  const pageTitle = useMemo(() => (isEdit ? "Edit note" : "New note"), [isEdit]);
+  const pageTitle = useMemo(() => (isEdit ? "Edit Note" : "New Note"), [isEdit]);
+
+  useEffect(() => {
+    document.title = "Solar Editor";
+  }, []);
 
   useEffect(() => {
     let ignore = false;
@@ -115,7 +122,7 @@ export default function NoteEditor() {
         setTitle(updated?.title || "");
         setContent(typeof updated?.content === "string" ? updated.content : payload.content);
         setIsFavorite(!!updated?.isFavorite);
-        setSuccessMsg("Saved.");
+        setSuccessMsg("Saved successfully!");
       } else {
         const created = await notesApi.create(payload);
         // go to edit route right away
@@ -150,127 +157,142 @@ export default function NoteEditor() {
 
   return (
     <div className="space-y-6">
-      {/* Top bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <Button asChild variant="outline">
-            <Link to="/dashboard">
-              <ArrowLeft className="h-4 w-4" />
-              Back
-            </Link>
-          </Button>
+      {/* Top toolbar */}
+      <div className="border-[4px] border-black bg-white p-4 shadow-[6px_6px_0px_0px_#000000]">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          {/* Left: Back button and title */}
+          <div className="flex items-center gap-4">
+            <Button asChild variant="secondary" size="sm">
+              <Link to="/dashboard">
+                <ArrowLeft className="h-4 w-4" />
+                Back
+              </Link>
+            </Button>
 
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-slate-900">{pageTitle}</h1>
-            <p className="mt-1 text-sm text-slate-600">
-              {isEdit ? "Make changes and save them." : "Write something and save your new note."}
-            </p>
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center border-[3px] border-black bg-[#B4E4FF]">
+                <FileText className="h-5 w-5 text-black" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold uppercase tracking-tight text-black">
+                  {pageTitle}
+                </h1>
+                <p className="text-xs font-medium text-black/70">
+                  {isEdit ? "Make changes and save them" : "Write something new"}
+                </p>
+              </div>
+            </div>
           </div>
-        </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" onClick={onCancel} disabled={saving || deleting}>
-            Cancel
-          </Button>
+          {/* Right: Action buttons */}
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="secondary" onClick={onCancel} disabled={saving || deleting} size="sm">
+              Cancel
+            </Button>
 
-          {isEdit ? (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="destructive" disabled={saving || deleting}>
-                  <Trash2 className="h-4 w-4" />
-                  {deleting ? "Deleting..." : "Delete"}
-                </Button>
-              </AlertDialogTrigger>
+            {isEdit ? (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="danger" disabled={saving || deleting} size="sm">
+                    <Trash2 className="h-4 w-4" />
+                    {deleting ? "Deleting..." : "Delete"}
+                  </Button>
+                </AlertDialogTrigger>
 
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete this note?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This action can’t be undone. The note will be permanently removed.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete This Note?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This action can't be undone. The note will be permanently removed.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
 
-                <AlertDialogFooter>
-                  <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    disabled={deleting}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      onDelete();
-                    }}
-                    className="bg-red-600 text-white hover:bg-red-700"
-                  >
-                    Delete
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          ) : null}
+                  <AlertDialogFooter>
+                    <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      disabled={deleting}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        onDelete();
+                      }}
+                    >
+                      Delete
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            ) : null}
 
-          <Button onClick={onSave} disabled={saving || deleting || loading}>
-            <Save className="h-4 w-4" />
-            {saving ? "Saving..." : "Save"}
-          </Button>
+            <Button onClick={onSave} disabled={saving || deleting || loading} size="sm">
+              <Save className="h-4 w-4" />
+              {saving ? "Saving..." : "Save"}
+            </Button>
+          </div>
         </div>
       </div>
 
       {/* Alerts */}
       {errorMsg ? (
-        <Alert variant="destructive">
-          <AlertTitle>Action failed</AlertTitle>
+        <Alert variant="destructive" onDismiss={() => setErrorMsg("")}>
+          <AlertTitle>⚠️ Error</AlertTitle>
           <AlertDescription>{errorMsg}</AlertDescription>
         </Alert>
       ) : null}
 
       {successMsg ? (
-        <Alert variant="success">
-          <AlertTitle>Done</AlertTitle>
+        <Alert variant="success" onDismiss={() => setSuccessMsg("")}>
+          <AlertTitle>✅ Success</AlertTitle>
           <AlertDescription>{successMsg}</AlertDescription>
         </Alert>
       ) : null}
 
       {/* Editor Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between gap-3">
-            <span>Note</span>
+      <Card className="border-[4px] border-black bg-white shadow-[6px_6px_0px_0px_#FFD6E8]">
+        <CardHeader className="border-b-[3px] border-black">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <CardTitle className="text-lg font-bold uppercase">Note Content</CardTitle>
+              <CardDescription className="text-sm font-medium text-black/70">
+                Title is optional. Write your content below.
+              </CardDescription>
+            </div>
 
+            {/* Favorite toggle */}
             <button
               type="button"
               onClick={() => setIsFavorite((v) => !v)}
-              className={[
-                "inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm font-medium transition",
+              className={`inline-flex items-center gap-2 border-[3px] border-black px-3 py-2 font-bold uppercase text-sm transition-all shadow-[3px_3px_0px_0px_#000000] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[2px_2px_0px_0px_#000000] active:translate-x-[3px] active:translate-y-[3px] active:shadow-[0px_0px_0px_0px_#000000] ${
                 isFavorite
-                  ? "border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100"
-                  : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
-              ].join(" ")}
+                  ? "bg-[#FFF500] text-black"
+                  : "bg-white text-black"
+              }`}
               aria-label="Toggle favorite"
             >
-              <Star className={`h-4 w-4 ${isFavorite ? "fill-amber-400 text-amber-600" : "text-slate-500"}`} />
-              {isFavorite ? "Favorite" : "Mark favorite"}
+              <Star className={`h-4 w-4 ${isFavorite ? "fill-black text-black" : "text-black"}`} />
+              {isFavorite ? "Favorited" : "Favorite"}
             </button>
-          </CardTitle>
-
-          <CardDescription>
-            Title is optional. Content is stored as an HTML string.
-          </CardDescription>
+          </div>
         </CardHeader>
 
-        <CardContent className="space-y-4">
-          <Input
-            placeholder="Title (optional)"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            disabled={loading || saving || deleting}
-          />
+        <CardContent className="space-y-4 p-6">
+          {/* Title input */}
+          <div>
+            <Input
+              placeholder="Title (optional)"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              disabled={loading || saving || deleting}
+            />
+          </div>
 
+          {/* Editor */}
           {loading ? (
             <div className="space-y-3">
-              <div className="h-10 animate-pulse rounded-md border border-slate-200 bg-slate-50" />
-              <div className="h-72 animate-pulse rounded-md border border-slate-200 bg-slate-50" />
+              <div className="h-12 animate-pulse border-[3px] border-black bg-[#FFE5B4]" />
+              <div className="h-96 animate-pulse border-[3px] border-black bg-[#B4E4FF]" />
             </div>
           ) : (
-            <div className="rounded-xl border border-slate-200 bg-white">
+            <div className="solar-editor border-[3px] border-black bg-white shadow-[4px_4px_0px_0px_#FFF500]">
               <ReactQuill
                 theme="snow"
                 value={content}
@@ -278,14 +300,11 @@ export default function NoteEditor() {
                 modules={quillModules}
                 formats={quillFormats}
                 readOnly={saving || deleting}
+                placeholder="Start writing your note..."
               />
             </div>
           )}
 
-          <p className="text-xs text-slate-500">
-            Tip: Use <span className="font-medium">Save</span> to persist changes, or{" "}
-            <span className="font-medium">Cancel</span> to return to dashboard.
-          </p>
         </CardContent>
       </Card>
     </div>

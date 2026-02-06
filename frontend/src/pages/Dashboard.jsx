@@ -1,7 +1,6 @@
-// frontend/src/pages/Dashboard.jsx
-import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { Plus, RefreshCw } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { Plus, Search, Star, Sun, Sparkles } from "lucide-react";
 
 import { notesApi } from "../api/notes.api";
 import { useAuth } from "../auth/useAuth";
@@ -11,8 +10,22 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Alert, AlertDescription, AlertTitle } from "../components/ui/alert";
 import NoteList from "../components/NoteList";
+import TemplateModal from "../components/TemplateModal";
+import Loading, { SkeletonLoader } from "../components/Loading";
 
-/* Sorting helper: pinned first (pinnedAt desc) then createdAt desc */
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from "../components/ui/alert-dialog";
+
+/* sortNotes helper */
 function sortNotes(notes = []) {
   return [...notes].sort((a, b) => {
     const aPinned = a?.isPinned ? 1 : 0;
@@ -31,24 +44,36 @@ function sortNotes(notes = []) {
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const navigate = useNavigate();
 
   const [notes, setNotes] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [creating, setCreating] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
-  const [quickTitle, setQuickTitle] = useState("");
   const [query, setQuery] = useState("");
   const [favoritesOnly, setFavoritesOnly] = useState(false);
+
   const [searchLoading, setSearchLoading] = useState(false);
+
+  const [templateOpen, setTemplateOpen] = useState(false);
+
+  // State for delete dialog
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [noteToDelete, setNoteToDelete] = useState(null);
+
+  useEffect(() => {
+    document.title = "Solar Dashboard";
+  }, []);
+
+  useEffect(() => {
+    loadNotes();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function loadNotes() {
     setErrorMsg("");
     setLoading(true);
     try {
       const data = await notesApi.list();
-      // note: request(...) returns the data payload already
       setNotes(sortNotes(Array.isArray(data) ? data : []));
     } catch (err) {
       setErrorMsg(err?.message || "Failed to load notes.");
@@ -57,157 +82,251 @@ export default function Dashboard() {
     }
   }
 
-  useEffect(() => {
-    loadNotes();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  /* Search/load when favoritesOnly toggles or query changes (manual submit is optional) */
-  async function performSearch() {
+  async function performSearch({ q = "", favorites = false } = {}) {
     setErrorMsg("");
     setSearchLoading(true);
     try {
-      if (favoritesOnly) {
-        const data = await notesApi.searchFavoriteNotes(query || "");
-        setNotes(sortNotes(Array.isArray(data) ? data : []));
-      } else {
-        // Optional: backend may support ?q= param; we'll call list() for now
-        const data = await notesApi.list({ q: query || "" });
-        setNotes(sortNotes(Array.isArray(data) ? data : []));
-      }
+      const params = {};
+      if (q && q.trim() !== "") params.q = q.trim();
+      if (favorites) params.favorites = true;
+
+      const data = await notesApi.list(params);
+      setNotes(sortNotes(Array.isArray(data) ? data : []));
+      // eslint-disable-next-line no-unused-vars
     } catch (err) {
-      setErrorMsg(err?.message || "Search failed.");
+      try {
+        const data = await notesApi.search(q || "", favorites || false);
+        setNotes(sortNotes(Array.isArray(data) ? data : []));
+      } catch (err2) {
+        setErrorMsg(err2?.message || "Search failed.");
+      }
     } finally {
       setSearchLoading(false);
     }
   }
 
-  const filteredNotes = useMemo(() => notes, [notes]); // already handled on load/search
+  function onSearchKeyDown(e) {
+    if (e.key === "Enter") {
+      performSearch({ q: query, favorites: favoritesOnly });
+    }
+  }
 
-  /* Optimistic pin toggling handled here: update local state immediately,
-     call API, then merge backend response (or revert on error). */
+  function onSearchClick() {
+    performSearch({ q: query, favorites: favoritesOnly });
+  }
+
+  async function onToggleFavorites(v) {
+    setFavoritesOnly(v);
+    await performSearch({ q: query, favorites: v });
+  }
+
+  // pin optimistic update
   async function onTogglePin(id, newIsPinned) {
     setErrorMsg("");
-
-    // optimistic update: set isPinned and pinnedAt
-    const previousNotes = notes;
-    const optimisticNotes = notes.map((n) =>
+    const prev = notes;
+    const optimistic = notes.map((n) =>
       n.id === id ? { ...n, isPinned: newIsPinned, pinnedAt: newIsPinned ? new Date().toISOString() : null } : n
     );
-    setNotes(sortNotes(optimisticNotes));
+    setNotes(sortNotes(optimistic));
 
     try {
       const updated = await notesApi.pinNote(id, newIsPinned);
-      // merge updated note from backend
-      setNotes((prev) => sortNotes(prev.map((n) => (n.id === id ? updated : n))));
+      setNotes((prevNotes) => sortNotes(prevNotes.map((n) => (n.id === id ? updated : n))));
     } catch (err) {
-      // revert
-      setNotes(sortNotes(previousNotes));
+      setNotes(sortNotes(prev));
       setErrorMsg(err?.message || "Pin action failed.");
     }
   }
 
-  async function quickCreate() {
+  // favorite optimistic update using update endpoint
+  async function onToggleFavorite(id, newIsFavorite) {
     setErrorMsg("");
-    setCreating(true);
+    const prev = notes;
+    const optimistic = notes.map((n) => (n.id === id ? { ...n, isFavorite: newIsFavorite } : n));
+    setNotes(sortNotes(optimistic));
+
     try {
-      const payload = {
-        title: quickTitle.trim() ? quickTitle.trim() : null,
-        content: "<p></p>",
-        isFavorite: false,
-      };
-
-      const created = await notesApi.create(payload);
-
-      setNotes((prev) => sortNotes([created, ...prev]));
-      setQuickTitle("");
-      navigate(`/notes/${created.id}`);
+      const updated = await notesApi.update(id, { isFavorite: newIsFavorite });
+      setNotes((prevNotes) => sortNotes(prevNotes.map((n) => (n.id === id ? updated : n))));
     } catch (err) {
-      setErrorMsg(err?.message || "Failed to create note.");
-    } finally {
-      setCreating(false);
+      setNotes(sortNotes(prev));
+      setErrorMsg(err?.message || "Favorite action failed.");
     }
   }
 
+  // Replace the onDelete function
+  function handleDeleteClick(id) {
+    setNoteToDelete(id);
+    setDeleteDialogOpen(true);
+  }
+
+  async function confirmDelete() {
+    if (!noteToDelete) return;
+
+    setErrorMsg("");
+    const prev = notes;
+    setNotes((prevNotes) => prevNotes.filter((n) => n.id !== noteToDelete));
+
+    try {
+      await notesApi.remove(noteToDelete);
+      // success: already removed from UI
+    } catch (err) {
+      setNotes(prev);
+      setErrorMsg(err?.message || "Delete failed.");
+    } finally {
+      setDeleteDialogOpen(false);
+      setNoteToDelete(null);
+    }
+  }
+
+  function openTemplateModal() {
+    setTemplateOpen(true);
+  }
+
+  // Get greeting based on time of day
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good Morning";
+    if (hour < 18) return "Good Afternoon";
+    return "Good Evening";
+  };
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Dashboard</h1>
-          <p className="mt-1 text-sm text-slate-600">
-            {user?.name ? `Welcome back, ${user.name}.` : "Your notes, all in one place."}
-          </p>
-        </div>
+    <div className="min-h-screen bg-[#FFF500] p-6 pb-24">
+      <TemplateModal open={templateOpen} onClose={() => setTemplateOpen(false)} />
 
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={loadNotes} disabled={loading}>
-            <RefreshCw className="h-4 w-4" />
-            {loading ? "Refreshing..." : "Refresh"}
-          </Button>
-
-          <Button asChild>
-            <Link to="/notes/new">
-              <Plus className="h-4 w-4" />
-              New note
-            </Link>
-          </Button>
-        </div>
-      </div>
-
-      {errorMsg ? (
-        <Alert variant="destructive">
-          <AlertTitle>Action failed</AlertTitle>
-          <AlertDescription>{errorMsg}</AlertDescription>
-        </Alert>
-      ) : null}
-
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Quick actions</CardTitle>
-          <CardDescription>Create a blank note or search favorites.</CardDescription>
-        </CardHeader>
-
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <div className="sm:col-span-2">
-              <Input placeholder="Optional title for quick create…" value={quickTitle} onChange={(e) => setQuickTitle(e.target.value)} />
+      <div className="mx-auto max-w-7xl space-y-6">
+        {/* Header */}
+        <div className="border-[4px] border-black bg-white p-6 shadow-[6px_6px_0px_0px_#000000]">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex h-16 w-16 items-center justify-center border-[3px] border-black bg-[#FFF500]">
+                <Sun className="h-9 w-9 text-black" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold uppercase tracking-tight text-black">
+                  {getGreeting()}
+                  {user?.name && ", " + user.name.split(" ")[0]}!
+                </h1>
+                {/* <p className="mt-1 text-sm font-medium text-black/70">
+                  {notes.length} {notes.length === 1 ? "note" : "notes"} in your workspace
+                </p> */}
+              </div>
             </div>
-            <Button onClick={quickCreate} disabled={creating}>
-              {creating ? "Creating..." : "Quick create"}
-            </Button>
+
+            {/* Action buttons */}
+            <div className="flex items-center gap-3">
+              <Button onClick={openTemplateModal} variant="secondary">
+                <Sparkles className="h-4 w-4" />
+                Template
+              </Button>
+              <Button asChild>
+                <Link to="/notes/new">
+                  <Plus className="h-4 w-4" />
+                  New Note
+                </Link>
+              </Button>
+            </div>
           </div>
+        </div>
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <div className="sm:col-span-2">
-              <Input placeholder={favoritesOnly ? "Search favorites…" : "Search notes…"} value={query} onChange={(e) => setQuery(e.target.value)} />
+        {/* Error Alert */}
+        {errorMsg ? (
+          <Alert variant="destructive" onDismiss={() => setErrorMsg("")}>
+            <AlertTitle>⚠️ Action Failed</AlertTitle>
+            <AlertDescription>{errorMsg}</AlertDescription>
+          </Alert>
+        ) : null}
+
+        {/* Search & Filter Card */}
+        <Card className="border-[4px] border-black bg-white shadow-[6px_6px_0px_0px_#FF00FF]">
+          <CardHeader className="border-b-[3px] border-black">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center border-[3px] border-black bg-[#00FFFF]">
+                <Search className="h-5 w-5 text-black" />
+              </div>
+              <div>
+                <CardTitle className="text-lg font-bold uppercase">Search & Filter</CardTitle>
+                <CardDescription className="text-sm font-medium text-black/70">
+                  Find your notes quickly
+                </CardDescription>
+              </div>
             </div>
+          </CardHeader>
 
-            <div className="flex items-center gap-2">
-              <Button onClick={performSearch} disabled={searchLoading}>
+          <CardContent className="p-6">
+            <div className="flex flex-col gap-3 sm:flex-row">
+              {/* Search input */}
+              <div className="flex-1">
+                <Input
+                  placeholder="Search notes..."
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  onKeyDown={onSearchKeyDown}
+                />
+              </div>
+
+              {/* Favorites checkbox */}
+              <label className="flex items-center gap-3 border-[3px] border-black bg-white px-4 py-3 cursor-pointer hover:bg-[#FFD6E8] transition-colors">
+                <input
+                  type="checkbox"
+                  checked={favoritesOnly}
+                  onChange={(e) => onToggleFavorites(e.target.checked)}
+                  className="h-5 w-5 cursor-pointer border-[2px] border-black accent-[#FFF500]"
+                />
+                <div className="flex items-center gap-2">
+                  <Star className={`h-4 w-4 ${favoritesOnly ? 'fill-[#FFF500] text-[#FFF500]' : 'text-black'}`} />
+                  <span className="text-sm font-bold uppercase text-black whitespace-nowrap">
+                    Favorites Only
+                  </span>
+                </div>
+              </label>
+
+              {/* Search button */}
+              <Button onClick={onSearchClick} disabled={searchLoading} variant="secondary">
                 {searchLoading ? "Searching..." : "Search"}
               </Button>
-
-              <label className="inline-flex items-center gap-2 text-sm text-slate-700">
-                <input type="checkbox" checked={favoritesOnly} onChange={(e) => setFavoritesOnly(e.target.checked)} />
-                Favorites only
-              </label>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
-      {loading ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-40 animate-pulse rounded-xl border border-slate-200 bg-white" />
-          ))}
-        </div>
-      ) : (
-        // Pass onTogglePin to NoteList via NoteCard props
-        <div>
-          <NoteList notes={filteredNotes} onTogglePin={onTogglePin} />
-        </div>
-      )}
+        {/* Notes List */}
+        {loading ? (
+          <div className="space-y-4">
+            <Loading label="Loading your notes..." />
+            <SkeletonLoader count={3} />
+          </div>
+        ) : (
+          <div>
+            <NoteList
+              notes={notes}
+              onTogglePin={onTogglePin}
+              onToggleFavorite={onToggleFavorite}
+              onDelete={handleDeleteClick}  // Changed this
+            />
+
+            {/* Delete Confirmation Dialog */}
+            <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete This Note?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This action cannot be undone. The note will be permanently removed from your workspace.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel onClick={() => setDeleteDialogOpen(false)}>
+                    Cancel
+                  </AlertDialogCancel>
+                  <AlertDialogAction onClick={confirmDelete}>
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

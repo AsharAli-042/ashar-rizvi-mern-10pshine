@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from "react-router-dom";
+import { useLocation, Navigate, Route, Routes } from "react-router-dom";
 import ProtectedRoute from "./routes/ProtectedRoute.jsx";
 
 import Navbar from "./components/Navbar.jsx";
@@ -12,13 +12,40 @@ import Profile from "./pages/Profile.jsx";
 import NotFound from "./pages/NotFound.jsx";
 
 export default function App() {
+  const location = useLocation();
+
+  // Pages that need constrained layout (max-width wrapper)
+  const constrainedRoutes = [
+    '/notes/new',
+    '/profile',
+  ];
+
+  // Check if current route starts with /notes/ and has an ID
+  const isNoteEditor = location.pathname.startsWith('/notes/') && location.pathname !== '/notes/new';
+
+  const isConstrained = constrainedRoutes.includes(location.pathname) || isNoteEditor;
+
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
+    <div className="min-h-screen">
       <Navbar />
 
-      <main className="mx-auto w-full max-w-5xl px-4 py-6">
+      {isConstrained ? (
+        // Constrained layout for note editor and profile with yellow background
+        <div className="min-h-screen bg-[#FFF500] pb-24">
+          <main className="mx-auto w-full max-w-5xl px-4 py-6">
+            <Routes>
+              <Route element={<ProtectedRoute />}>
+                <Route path="/notes/new" element={<NoteEditor />} />
+                <Route path="/notes/:id" element={<NoteEditor />} />
+                <Route path="/profile" element={<Profile />} />
+              </Route>
+            </Routes>
+          </main>
+        </div>
+      ) : (
+        // Full screen for all other pages
         <Routes>
-          {/* Public */}
+          {/* Auth routes */}
           <Route path="/auth" element={<AuthPage />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
@@ -26,18 +53,16 @@ export default function App() {
           {/* Default */}
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
-          {/* Protected */}
+          {/* Protected routes */}
           <Route element={<ProtectedRoute />}>
             <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/notes/new" element={<NoteEditor />} />
-            <Route path="/notes/:id" element={<NoteEditor />} />
-            <Route path="/profile" element={<Profile />} />
           </Route>
 
           {/* 404 */}
           <Route path="*" element={<NotFound />} />
+          <Route path="/notes" element={<NotFound />} />
         </Routes>
-      </main>
+      )}
     </div>
   );
 }

@@ -6,3 +6,266 @@
 html, body, #root {
     height: 100%;
   }
+
+  /* Custom scrollbar styling for Solar Brutalism */
+::-webkit-scrollbar {
+  width: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: #FFF500;
+  border-left: 3px solid #000000;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #000000;
+  border: 2px solid #FFF500;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #FF00FF;
+}
+
+/* For Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #000000 #FFF500;
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Solar Brutalism Quill Editor Styling */
+.solar-editor .ql-toolbar.ql-snow {
+  border: none;
+  border-bottom: 3px solid #000000;
+  background: #FFFFFF;
+  padding: 12px;
+  font-family: inherit;
+}
+
+.solar-editor .ql-container.ql-snow {
+  border: none;
+  font-family: inherit;
+  font-size: 16px;
+  min-height: 400px;
+}
+
+.solar-editor .ql-editor {
+  padding: 20px;
+  min-height: 400px;
+  font-family: inherit;
+  line-height: 1.6;
+}
+
+.solar-editor .ql-editor.ql-blank::before {
+  color: rgba(0, 0, 0, 0.4);
+  font-style: normal;
+  font-weight: 500;
+  left: 20px;
+}
+
+/* Toolbar buttons */
+.solar-editor .ql-toolbar button {
+  width: 32px;
+  height: 32px;
+  border: 2px solid transparent;
+  transition: all 0.15s;
+}
+
+.solar-editor .ql-toolbar button:hover {
+  border: 2px solid #000000;
+  background: #FFF500;
+}
+
+.solar-editor .ql-toolbar button.ql-active {
+  border: 2px solid #000000;
+  background: #FFF500;
+  box-shadow: inset 2px 2px 0px #000000;
+}
+
+.solar-editor .ql-toolbar .ql-picker-label {
+  border: 2px solid transparent;
+  transition: all 0.15s;
+  font-weight: 600;
+  color: #000000;
+}
+
+.solar-editor .ql-toolbar .ql-picker-label:hover {
+  border: 2px solid #000000;
+  background: #FFF500;
+}
+
+.solar-editor .ql-toolbar .ql-picker.ql-expanded .ql-picker-label {
+  border: 2px solid #000000;
+  background: #FFF500;
+}
+
+.solar-editor .ql-toolbar .ql-picker-options {
+  border: 3px solid #000000;
+  box-shadow: 4px 4px 0px #000000;
+  background: #FFFFFF;
+  padding: 4px;
+}
+
+.solar-editor .ql-toolbar .ql-picker-item {
+  padding: 6px 12px;
+  font-weight: 600;
+  color: #000000;
+}
+
+.solar-editor .ql-toolbar .ql-picker-item:hover {
+  background: #FFF500;
+}
+
+/* Editor content styling */
+.solar-editor .ql-editor h1 {
+  font-size: 2em;
+  font-weight: bold;
+  color: #000000;
+  margin-bottom: 0.5em;
+  border-bottom: 3px solid #000000;
+  padding-bottom: 0.3em;
+}
+
+.solar-editor .ql-editor h2 {
+  font-size: 1.5em;
+  font-weight: bold;
+  color: #000000;
+  margin-bottom: 0.5em;
+  border-bottom: 2px solid #000000;
+  padding-bottom: 0.3em;
+}
+
+.solar-editor .ql-editor h3 {
+  font-size: 1.25em;
+  font-weight: bold;
+  color: #000000;
+  margin-bottom: 0.5em;
+}
+
+.solar-editor .ql-editor p {
+  margin-bottom: 1em;
+  color: #000000;
+}
+
+.solar-editor .ql-editor strong {
+  font-weight: bold;
+  color: #000000;
+}
+
+.solar-editor .ql-editor em {
+  font-style: italic;
+}
+
+.solar-editor .ql-editor ul,
+.solar-editor .ql-editor ol {
+  padding-left: 1.5em;
+  margin-bottom: 1em;
+}
+
+.solar-editor .ql-editor li {
+  margin-bottom: 0.5em;
+  color: #000000;
+}
+
+.solar-editor .ql-editor blockquote {
+  border-left: 4px solid #000000;
+  background: #B4E4FF;
+  padding: 12px 16px;
+  margin: 1em 0;
+  font-style: italic;
+  color: #000000;
+}
+
+.solar-editor .ql-editor pre {
+  background: #000000;
+  color: #00FF00;
+  border: 3px solid #000000;
+  padding: 16px;
+  margin: 1em 0;
+  overflow-x: auto;
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+  box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.3);
+}
+
+.solar-editor .ql-editor code {
+  background: rgba(0, 0, 0, 0.1);
+  border: 2px solid #000000;
+  padding: 2px 6px;
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+  color: #000000;
+  font-weight: 600;
+}
+
+.solar-editor .ql-editor a {
+  color: #000000;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+  font-weight: 600;
+}
+
+.solar-editor .ql-editor a:hover {
+  background: #FFF500;
+}
+
+/* Scrollbar for editor */
+.solar-editor .ql-editor::-webkit-scrollbar {
+  width: 12px;
+}
+
+.solar-editor .ql-editor::-webkit-scrollbar-track {
+  background: #FFFFFF;
+  border-left: 3px solid #000000;
+}
+
+.solar-editor .ql-editor::-webkit-scrollbar-thumb {
+  background: #000000;
+  border: 2px solid #FFFFFF;
+}
+
+.solar-editor .ql-editor::-webkit-scrollbar-thumb:hover {
+  background: #FFF500;
+  border: 2px solid #000000;
+}
+
+/* Keep this - styles for any tables in content */
+.solar-editor table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1em 0;
+  border: 3px solid #000000;
+}
+
+.solar-editor table th,
+.solar-editor table td {
+  border: 2px solid #000000;
+  padding: 12px;
+  text-align: left;
+  background: #FFFFFF;
+  color: #000000;
+  font-weight: 500;
+}
+
+.solar-editor table th {
+  background: #000000;
+  color: #FFF500;
+  font-weight: bold;
+  text-transform: uppercase;
+  font-size: 0.9em;
+}
+
+.solar-editor table tbody tr:nth-child(even) {
+  background: #FFFEF7;
+}
+
+.solar-editor table tbody tr:hover {
+  background: #FFE5B4;
+}

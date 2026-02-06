@@ -3,9 +3,10 @@ import { cn } from "../../lib/utils";
 
 const Alert = React.forwardRef(({ className, variant = "default", ...props }, ref) => {
   const variants = {
-    default: "border-slate-200 bg-white text-slate-900",
-    destructive: "border-red-200 bg-red-50 text-red-800",
-    success: "border-emerald-200 bg-emerald-50 text-emerald-800",
+    default: "bg-white text-black border-black",
+    destructive: "bg-[#FF0000] text-white border-black",
+    success: "bg-[#00FF00] text-black border-black",
+    warning: "bg-[#FFA500] text-black border-black",
   };
 
   return (
@@ -13,7 +14,7 @@ const Alert = React.forwardRef(({ className, variant = "default", ...props }, re
       ref={ref}
       role="alert"
       className={cn(
-        "relative w-full rounded-lg border px-4 py-3 text-sm",
+        "relative w-full border-[3px] px-4 py-4 text-sm font-bold shadow-[6px_6px_0px_0px_#000000]",
         variants[variant] || variants.default,
         className
       )}
@@ -24,12 +25,20 @@ const Alert = React.forwardRef(({ className, variant = "default", ...props }, re
 Alert.displayName = "Alert";
 
 const AlertTitle = React.forwardRef(({ className, ...props }, ref) => (
-  <h5 ref={ref} className={cn("mb-1 font-medium leading-none tracking-tight", className)} {...props} />
+  <h5 
+    ref={ref} 
+    className={cn("mb-2 font-bold uppercase leading-none tracking-tight text-base", className)} 
+    {...props} 
+  />
 ));
 AlertTitle.displayName = "AlertTitle";
 
 const AlertDescription = React.forwardRef(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn("text-sm [&_p]:leading-relaxed", className)} {...props} />
+  <div 
+    ref={ref} 
+    className={cn("text-sm font-medium [&_p]:leading-relaxed", className)} 
+    {...props} 
+  />
 ));
 AlertDescription.displayName = "AlertDescription";
 
