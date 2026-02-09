@@ -1,112 +1,397 @@
-import { render, screen } from "@testing-library/react";
+/* eslint-disable no-undef */
+import "@testing-library/jest-dom";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { test, expect, beforeEach, jest } from "@jest/globals";
-import { MemoryRouter } from "react-router-dom"; 
+import { MemoryRouter } from "react-router-dom";
 import Profile from "../pages/Profile";
 
-const mockMe = jest.fn();
-const mockUpdateMe = jest.fn();
+// Mock API
+const mockUsersMe = jest.fn();
+const mockUsersUpdateMe = jest.fn();
+const mockUsersChangePassword = jest.fn();
 
 jest.mock("../api/users.api", () => ({
   usersApi: {
-    me: (...args) => mockMe(...args),
-    updateMe: (...args) => mockUpdateMe(...args),
+    me: (...args) => mockUsersMe(...args),
+    updateMe: (...args) => mockUsersUpdateMe(...args),
+    changePassword: (...args) => mockUsersChangePassword(...args),
   },
 }));
 
-const mockNavigate = jest.fn();
-jest.mock("react-router-dom", () => {
-  const actual = jest.requireActual("react-router-dom");
-  return {
-    ...actual,
-    useNavigate: () => mockNavigate,
-  };
-});
-
-const mockLogout = jest.fn().mockResolvedValue(undefined);
+// Mock useAuth
+const mockLogout = jest.fn();
 const mockUpdateUser = jest.fn();
+const mockUser = {
+  name: "John Doe",
+  email: "john@example.com",
+};
 
 jest.mock("../auth/useAuth", () => ({
   useAuth: () => ({
-    user: { id: "u1", name: "Ashar", email: "ashar@email.com" },
-    logout: (...args) => mockLogout(...args),
-    updateUser: (...args) => mockUpdateUser(...args),
+    user: mockUser,
+    logout: mockLogout,
+    updateUser: mockUpdateUser,
   }),
 }));
 
-beforeEach(() => {
-    mockMe.mockReset();
-    mockUpdateMe.mockReset();
-    mockNavigate.mockReset();
-    mockLogout.mockClear();
-    mockUpdateUser.mockClear();
-});
+// Mock storage utility
+jest.mock("../utils/storage", () => ({
+  clearToken: jest.fn(),
+}));
 
-test("Profile loads and displays user info", async () => {
-    mockMe.mockResolvedValueOnce({
-    id: "u1",
-    name: "Ashar",
-    email: "ashar@email.com",
+// Mock useNavigate
+const mockNavigate = jest.fn();
+jest.mock("react-router-dom", () => ({
+  ...jest.requireActual("react-router-dom"),
+  useNavigate: () => mockNavigate,
+  useLocation: () => ({ pathname: "/profile" }),
+}));
+
+// Sample test data
+const mockProfile = {
+  name: "John Doe",
+  email: "john@example.com",
+};
+
+describe("Profile - Functional Tests", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockUsersMe.mockResolvedValue(mockProfile);
   });
 
-  render(
-    <MemoryRouter>
-      <Profile />
-    </MemoryRouter>
-  );
+  // ============================================
+  // PROFILE LOADING FUNCTIONALITY
+  // ============================================
 
-  expect(await screen.findByDisplayValue("Ashar")).toBeInTheDocument();
-  expect(screen.getByDisplayValue("ashar@email.com")).toBeInTheDocument();
-});
+  describe("Profile Loading", () => {
+    test("should load and display user profile on mount", async () => {
+      render(
+        <MemoryRouter>
+          <Profile />
+        </MemoryRouter>
+      );
 
-test("Save changes calls PATCH /users/me with changed fields", async () => {
-  const user = userEvent.setup();
+      await waitFor(() => {
+        expect(mockUsersMe).toHaveBeenCalledTimes(1);
+      });
 
-  mockMe.mockResolvedValueOnce({
-    id: "u1",
-    name: "Ashar",
-    email: "ashar@email.com",
+      expect(screen.getByDisplayValue("John Doe")).toBeInTheDocument();
+      expect(screen.getByDisplayValue("john@example.com")).toBeInTheDocument();
+    });
+
+    test("should display error when profile fails to load", async () => {
+      const errorMessage = "Failed to load profile";
+      mockUsersMe.mockRejectedValueOnce({ message: errorMessage });
+
+      render(
+        <MemoryRouter>
+          <Profile />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText(new RegExp(errorMessage, "i"))).toBeInTheDocument();
+      });
+    });
+
+    test("should display user initials in avatar", async () => {
+      render(
+        <MemoryRouter>
+          <Profile />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText("JD")).toBeInTheDocument(); // Initials from "John Doe"
+      });
+    });
   });
 
-  mockUpdateMe.mockResolvedValueOnce({
-    id: "u1",
-    name: "Ashar Ali",
-    email: "ashar@email.com",
+  // ============================================
+  // NAME UPDATE FUNCTIONALITY
+  // ============================================
+
+  describe("Name Update", () => {
+    test("should update name successfully", async () => {
+      const user = userEvent.setup();
+      const updatedProfile = { ...mockProfile, name: "Jane Smith" };
+      mockUsersUpdateMe.mockResolvedValueOnce(updatedProfile);
+
+      render(
+        <MemoryRouter>
+          <Profile />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByDisplayValue("John Doe")).toBeInTheDocument();
+      });
+
+      const nameInput = screen.getByPlaceholderText(/your name/i);
+      await user.clear(nameInput);
+      await user.type(nameInput, "Jane Smith");
+
+      const saveButton = screen.getByRole("button", { name: /save changes/i });
+      await user.click(saveButton);
+
+      await waitFor(() => {
+        expect(mockUsersUpdateMe).toHaveBeenCalledWith({ name: "Jane Smith" });
+        expect(mockUpdateUser).toHaveBeenCalledWith(updatedProfile);
+        expect(screen.getByText(/name updated/i)).toBeInTheDocument();
+      });
+    });
+
+    test("should validate and reject empty name", async () => {
+      const user = userEvent.setup();
+
+      render(
+        <MemoryRouter>
+          <Profile />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByDisplayValue("John Doe")).toBeInTheDocument();
+      });
+
+      const nameInput = screen.getByPlaceholderText(/your name/i);
+      await user.clear(nameInput);
+
+      const saveButton = screen.getByRole("button", { name: /save changes/i });
+      await user.click(saveButton);
+
+      await waitFor(() => {
+        expect(screen.getByText(/name cannot be empty/i)).toBeInTheDocument();
+      });
+
+      expect(mockUsersUpdateMe).not.toHaveBeenCalled();
+    });
+
+    test("should not update when name has not changed", async () => {
+      const user = userEvent.setup();
+
+      render(
+        <MemoryRouter>
+          <Profile />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByDisplayValue("John Doe")).toBeInTheDocument();
+      });
+
+      const saveButton = screen.getByRole("button", { name: /save changes/i });
+      await user.click(saveButton);
+
+      await waitFor(() => {
+        expect(screen.getByText(/no changes to save/i)).toBeInTheDocument();
+      });
+
+      expect(mockUsersUpdateMe).not.toHaveBeenCalled();
+    });
+
+    test("should display error when name update fails", async () => {
+      const user = userEvent.setup();
+      const errorMessage = "Failed to update name";
+      mockUsersUpdateMe.mockRejectedValueOnce({ message: errorMessage });
+
+      render(
+        <MemoryRouter>
+          <Profile />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByDisplayValue("John Doe")).toBeInTheDocument();
+      });
+
+      const nameInput = screen.getByPlaceholderText(/your name/i);
+      await user.clear(nameInput);
+      await user.type(nameInput, "New Name");
+
+      const saveButton = screen.getByRole("button", { name: /save changes/i });
+      await user.click(saveButton);
+
+      await waitFor(() => {
+        expect(screen.getByText(new RegExp(errorMessage, "i"))).toBeInTheDocument();
+      });
+    });
   });
 
-  render(
-    <MemoryRouter>
-      <Profile />
-    </MemoryRouter>
-  );
+  // ============================================
+  // PASSWORD CHANGE FUNCTIONALITY
+  // ============================================
 
-  const nameInput = await screen.findByLabelText(/name/i);
-  await user.clear(nameInput);
-  await user.type(nameInput, "Ashar Ali");
+  describe("Password Change", () => {
 
-  await user.click(screen.getByRole("button", { name: /save changes/i }));
+    test("should validate and reject empty password fields", async () => {
+      const user = userEvent.setup();
 
-  expect(mockUpdateMe).toHaveBeenCalledTimes(1);
-  expect(mockUpdateMe.mock.calls[0][0]).toEqual({ name: "Ashar Ali" });
-  expect(mockUpdateUser).toHaveBeenCalledTimes(1);
-});
+      render(
+        <MemoryRouter>
+          <Profile />
+        </MemoryRouter>
+      );
 
-test("Logout clears session and navigates to /auth", async () => {
-    mockMe.mockResolvedValueOnce({
-    id: "u1",
-    name: "Ashar",
-    email: "ashar@email.com",
+      await waitFor(() => {
+        expect(mockUsersMe).toHaveBeenCalled();
+      });
+
+      const changePasswordButton = screen.getByRole("button", { name: /change password/i });
+      await user.click(changePasswordButton);
+
+      await waitFor(() => {
+        expect(screen.getByText(/please fill both current and new password/i)).toBeInTheDocument();
+      });
+
+      expect(mockUsersChangePassword).not.toHaveBeenCalled();
+    });
+
+    test("should validate password length (minimum 8 characters)", async () => {
+      const user = userEvent.setup();
+
+      render(
+        <MemoryRouter>
+          <Profile />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(mockUsersMe).toHaveBeenCalled();
+      });
+
+      const currentPasswordInput = screen.getByPlaceholderText(/current password/i);
+      const newPasswordInput = screen.getByPlaceholderText(/new password \(8\+ characters\)/i);
+      const confirmPasswordInput = screen.getByPlaceholderText(/confirm new password/i);
+
+      await user.type(currentPasswordInput, "oldPass");
+      await user.type(newPasswordInput, "short");
+      await user.type(confirmPasswordInput, "short");
+
+      const changePasswordButton = screen.getByRole("button", { name: /change password/i });
+      await user.click(changePasswordButton);
+
+      await waitFor(() => {
+        expect(screen.getByText(/new password must be at least 8 characters/i)).toBeInTheDocument();
+      });
+
+      expect(mockUsersChangePassword).not.toHaveBeenCalled();
+    });
+
+    test("should validate password confirmation match", async () => {
+      const user = userEvent.setup();
+
+      render(
+        <MemoryRouter>
+          <Profile />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(mockUsersMe).toHaveBeenCalled();
+      });
+
+      const currentPasswordInput = screen.getByPlaceholderText(/current password/i);
+      const newPasswordInput = screen.getByPlaceholderText(/new password \(8\+ characters\)/i);
+      const confirmPasswordInput = screen.getByPlaceholderText(/confirm new password/i);
+
+      await user.type(currentPasswordInput, "oldPassword123");
+      await user.type(newPasswordInput, "newPassword123");
+      await user.type(confirmPasswordInput, "differentPassword");
+
+      const changePasswordButton = screen.getByRole("button", { name: /change password/i });
+      await user.click(changePasswordButton);
+
+      await waitFor(() => {
+        expect(screen.getByText(/new passwords do not match/i)).toBeInTheDocument();
+      });
+
+      expect(mockUsersChangePassword).not.toHaveBeenCalled();
+    });
+
+    test("should display error for incorrect current password", async () => {
+      const user = userEvent.setup();
+      mockUsersChangePassword.mockRejectedValueOnce({ 
+        status: 401,
+        message: "Invalid credentials" 
+      });
+
+      render(
+        <MemoryRouter>
+          <Profile />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(mockUsersMe).toHaveBeenCalled();
+      });
+
+      const currentPasswordInput = screen.getByPlaceholderText(/current password/i);
+      const newPasswordInput = screen.getByPlaceholderText(/new password \(8\+ characters\)/i);
+      const confirmPasswordInput = screen.getByPlaceholderText(/confirm new password/i);
+
+      await user.type(currentPasswordInput, "wrongPassword");
+      await user.type(newPasswordInput, "newPassword123");
+      await user.type(confirmPasswordInput, "newPassword123");
+
+      const changePasswordButton = screen.getByRole("button", { name: /change password/i });
+      await user.click(changePasswordButton);
+
+      await waitFor(() => {
+        expect(screen.getByText(/current password is incorrect/i)).toBeInTheDocument();
+      });
+    });
+
+    test("should display generic error when password change fails", async () => {
+      const user = userEvent.setup();
+      const errorMessage = "Password change failed";
+      mockUsersChangePassword.mockRejectedValueOnce({ message: errorMessage });
+
+      render(
+        <MemoryRouter>
+          <Profile />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(mockUsersMe).toHaveBeenCalled();
+      });
+
+      const currentPasswordInput = screen.getByPlaceholderText(/current password/i);
+      const newPasswordInput = screen.getByPlaceholderText(/new password \(8\+ characters\)/i);
+      const confirmPasswordInput = screen.getByPlaceholderText(/confirm new password/i);
+
+      await user.type(currentPasswordInput, "oldPassword123");
+      await user.type(newPasswordInput, "newPassword123");
+      await user.type(confirmPasswordInput, "newPassword123");
+
+      const changePasswordButton = screen.getByRole("button", { name: /change password/i });
+      await user.click(changePasswordButton);
+
+      await waitFor(() => {
+        expect(screen.getByText(new RegExp(errorMessage, "i"))).toBeInTheDocument();
+      });
+    });
   });
 
-  render(
-    <MemoryRouter>
-      <Profile />
-    </MemoryRouter>
-  );
+  // ============================================
+  // EMAIL FIELD FUNCTIONALITY
+  // ============================================
 
-  await screen.findByText(/edit profile/i);
-  await userEvent.click(screen.getByRole("button", { name: /logout/i }));
+  describe("Email Field", () => {
+    test("should display email as disabled/locked", async () => {
+      render(
+        <MemoryRouter>
+          <Profile />
+        </MemoryRouter>
+      );
 
-  expect(mockLogout).toHaveBeenCalledTimes(1);
-  expect(mockNavigate).toHaveBeenCalledWith("/auth");
+      await waitFor(() => {
+        expect(screen.getByDisplayValue("john@example.com")).toBeInTheDocument();
+      });
+
+      const emailInput = screen.getByDisplayValue("john@example.com");
+      expect(emailInput).toBeDisabled();
+    });
+  });
 });

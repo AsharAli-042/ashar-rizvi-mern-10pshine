@@ -1,7 +1,8 @@
 import * as React from "react";
 import { cn } from "../../lib/utils";
 
-const Alert = React.forwardRef(({ className, variant = "default", ...props }, ref) => {
+// eslint-disable-next-line no-unused-vars
+const Alert = React.forwardRef(({ className, variant = "default", onDismiss, ...props }, ref) => {
   const variants = {
     default: "bg-white text-black border-black",
     destructive: "bg-[#FF0000] text-white border-black",

@@ -43,6 +43,11 @@ export default function AuthPage() {
     if (isAuthenticated) navigate("/dashboard");
   }, [isAuthenticated, navigate]);
 
+  // ✅ FIXED: Clear error message when switching tabs
+  useEffect(() => {
+    setErrorMsg("");
+  }, [tab]);
+
   async function onSubmitLogin(e) {
     e.preventDefault();
     setErrorMsg("");
