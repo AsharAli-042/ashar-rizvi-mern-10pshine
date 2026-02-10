@@ -13,6 +13,8 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for proper blame information
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -32,9 +34,7 @@ jobs:
           npm run test:coverage
 
       - name: SonarCloud Scan
-        uses: sonarsource/sonarcloud-github-action@master
-        with:
-          organization: "ashar-ali-rizvi"
-          projectKey: "AsharAli-042_ashar-rizvi-mern-10pshine"
+        uses: SonarSource/sonarcloud-github-action@master
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed for PR analysis
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
